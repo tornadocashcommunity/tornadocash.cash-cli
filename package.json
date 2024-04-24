@@ -39,6 +39,8 @@
     ".gitattributes",
     ".gitignore",
     ".npmrc",
+    "logo.png",
+    "logo2.png",
     "rollup.config.mjs",
     "tsconfig.json",
     "yarn.lock"
