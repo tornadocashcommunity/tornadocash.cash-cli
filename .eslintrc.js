@@ -5,7 +5,11 @@ module.exports = {
   },
   "extends": [
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "plugin:import/recommended",
+    "plugin:import/typescript",
+    "prettier",
+    "plugin:prettier/recommended",
   ],
   "overrides": [
     {
@@ -26,9 +30,18 @@ module.exports = {
     "sourceType": "module"
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "prettier"
   ],
   "rules": {
+    "prettier/prettier": [
+      "error",
+      {
+        singleQuote: true,
+        printWidth: 120
+      }
+    ],
+    "import/order": ["error"],
     "indent": [
       "error",
       2
@@ -44,6 +57,7 @@ module.exports = {
     "semi": [
       "error",
       "always"
-    ]
+    ],
+    "@typescript-eslint/no-unused-vars": ["warn"]
   }
 }

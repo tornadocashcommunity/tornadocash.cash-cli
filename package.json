@@ -1,19 +1,31 @@
 {
   "name": "tornado-cli",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.1-alpha",
+  "description": "Modern Toolsets for Privacy Pools on Ethereum",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "bin": {
-    "tornado": "./dist/index.js"
+    "tornado-cli": "./dist/cli.js"
   },
   "scripts": {
     "typechain": "typechain --target ethers-v6 --out-dir src/typechain src/abi/*.json",
     "types": "tsc --declaration --emitDeclarationOnly",
-    "lint": "eslint src/**/*.ts --ext .ts --ignore-pattern src/typechain --fix",
-    "build": "rollup -c",
-    "start": "ts-node src/index.ts"
+    "lint": "eslint src/**/*.ts --ext .ts --ignore-pattern src/typechain",
+    "build": "yarn types && rollup -c",
+    "start": "ts-node src/cli.ts",
+    "startHelp": "ts-node src/cli.ts help",
+    "createDeposit": "ts-node src/cli.ts create",
+    "deposit": "ts-node src/cli.ts deposit",
+    "depositInvoice": "ts-node src/cli.ts depositInvoice",
+    "withdraw": "ts-node src/cli.ts withdraw",
+    "compliance": "ts-node src/cli.ts compliance",
+    "syncEvents": "ts-node src/cli.ts syncEvents",
+    "relayers": "ts-node src/cli.ts relayers",
+    "send": "ts-node src/cli.ts send",
+    "balance": "ts-node src/cli.ts balance",
+    "sign": "ts-node src/cli.ts sign",
+    "broadcast": "ts-node src/cli.ts broadcast"
   },
   "author": "",
   "license": "MIT",
@@ -26,6 +38,7 @@
     ".eslintrc.js",
     ".gitattributes",
     ".gitignore",
+    ".npmrc",
     "rollup.config.mjs",
     "tsconfig.json",
     "yarn.lock"
