@@ -1,6 +1,6 @@
 node_modules
 .env
-.idea
+/events
+/trees
 backup-tornado-*
 backup-tornadoInvoice-*
-test
