@@ -12,8 +12,17 @@ import {
   BaseGovernanceServiceConstructor,
   BaseRegistryServiceConstructor,
   BaseGovernanceEventTypes,
+  BaseEchoServiceConstructor,
+  BaseEchoService,
 } from './base';
-import type { BaseEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, RegistersEvents } from './types';
+import type {
+  BaseEvents,
+  DepositsEvents,
+  WithdrawalsEvents,
+  EncryptedNotesEvents,
+  RegistersEvents,
+  EchoEvents,
+} from './types';
 
 export type NodeDepositsServiceConstructor = BaseDepositsServiceConstructor & {
   cacheDirectory?: string;
@@ -176,6 +185,151 @@ export class NodeDepositsService extends BaseDepositsService {
 
     if (this.userDirectory) {
       await saveEvents<DepositsEvents | WithdrawalsEvents>({
+        name: instanceName,
+        userDirectory: this.userDirectory,
+        events,
+      });
+    }
+  }
+}
+
+export type NodeEchoServiceConstructor = BaseEchoServiceConstructor & {
+  cacheDirectory?: string;
+  userDirectory?: string;
+};
+
+export class NodeEchoService extends BaseEchoService {
+  cacheDirectory?: string;
+  userDirectory?: string;
+
+  constructor({
+    netId,
+    provider,
+    graphApi,
+    subgraphName,
+    Echoer,
+    deployedBlock,
+    fetchDataOptions,
+    cacheDirectory,
+    userDirectory,
+  }: NodeEchoServiceConstructor) {
+    super({
+      netId,
+      provider,
+      graphApi,
+      subgraphName,
+      Echoer,
+      deployedBlock,
+      fetchDataOptions,
+    });
+
+    this.cacheDirectory = cacheDirectory;
+    this.userDirectory = userDirectory;
+  }
+
+  updateEventProgress({ type, fromBlock, toBlock, count }: Parameters<BatchEventOnProgress>[0]) {
+    if (toBlock) {
+      console.log(`fromBlock - ${fromBlock}`);
+      console.log(`toBlock - ${toBlock}`);
+
+      if (count) {
+        console.log(`downloaded ${type} events count - ${count}`);
+        console.log('____________________________________________');
+        console.log(`Fetched ${type} events from ${fromBlock} to ${toBlock}\n`);
+      }
+    }
+  }
+
+  updateGraphProgress({ type, fromBlock, toBlock, count }: Parameters<BatchEventOnProgress>[0]) {
+    if (toBlock) {
+      console.log(`fromBlock - ${fromBlock}`);
+      console.log(`toBlock - ${toBlock}`);
+
+      if (count) {
+        console.log(`downloaded ${type} events from graph node count - ${count}`);
+        console.log('____________________________________________');
+        console.log(`Fetched ${type} events from graph node ${fromBlock} to ${toBlock}\n`);
+      }
+    }
+  }
+
+  async getEventsFromDB() {
+    if (!this.userDirectory) {
+      console.log(`Updating events for ${this.netId} chain echo events\n`);
+      console.log(`savedEvents count - ${0}`);
+      console.log(`savedEvents lastBlock - ${this.deployedBlock}\n`);
+
+      return {
+        events: [],
+        lastBlock: this.deployedBlock,
+      };
+    }
+
+    const savedEvents = await loadSavedEvents<EchoEvents>({
+      name: this.getInstanceName(),
+      userDirectory: this.userDirectory,
+      deployedBlock: this.deployedBlock,
+    });
+
+    console.log(`Updating events for ${this.netId} chain echo events\n`);
+    console.log(`savedEvents count - ${savedEvents.events.length}`);
+    console.log(`savedEvents lastBlock - ${savedEvents.lastBlock}\n`);
+
+    return savedEvents;
+  }
+
+  async getEventsFromCache() {
+    if (!this.cacheDirectory) {
+      console.log(`cachedEvents count - ${0}`);
+      console.log(`cachedEvents lastBlock - ${this.deployedBlock}\n`);
+
+      return {
+        events: [],
+        lastBlock: this.deployedBlock,
+      };
+    }
+
+    const cachedEvents = await loadCachedEvents<EchoEvents>({
+      name: this.getInstanceName(),
+      cacheDirectory: this.cacheDirectory,
+      deployedBlock: this.deployedBlock,
+    });
+
+    console.log(`cachedEvents count - ${cachedEvents.events.length}`);
+    console.log(`cachedEvents lastBlock - ${cachedEvents.lastBlock}\n`);
+
+    return cachedEvents;
+  }
+
+  async saveEvents({ events, lastBlock }: BaseEvents<EchoEvents>) {
+    const instanceName = this.getInstanceName();
+
+    console.log('\ntotalEvents count - ', events.length);
+    console.log(
+      `totalEvents lastBlock - ${events[events.length - 1] ? events[events.length - 1].blockNumber : lastBlock}\n`,
+    );
+
+    const eventTable = new Table();
+
+    eventTable.push(
+      [{ colSpan: 2, content: 'Echo Accounts', hAlign: 'center' }],
+      ['Network', `${this.netId} chain`],
+      ['Events', `${events.length} events`],
+      [{ colSpan: 2, content: 'Latest events' }],
+      ...events
+        .slice(events.length - 10)
+        .reverse()
+        .map(({ blockNumber }, index) => {
+          const eventIndex = events.length - index;
+
+          return [eventIndex, blockNumber];
+        }),
+    );
+
+    console.log(eventTable.toString() + '\n');
+
+    if (this.userDirectory) {
+      await saveEvents<EchoEvents>({
         name: instanceName,
         userDirectory: this.userDirectory,
         events,

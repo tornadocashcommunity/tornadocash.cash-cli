@@ -107,6 +107,23 @@ export const GET_NOTE_ACCOUNTS = `
   }
 `;
 
+export const GET_ECHO_EVENTS = `
+  query getNoteAccounts($first: Int, $fromBlock: Int) {
+    noteAccounts(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      id
+      blockNumber
+      address
+      encryptedAccount
+    }
+    _meta {
+      block {
+        number
+      }
+      hasIndexingErrors
+    }
+  }
+`;
+
 export const GET_ENCRYPTED_NOTES = `
   query getEncryptedNotes($first: Int, $fromBlock: Int) {
     encryptedNotes(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {

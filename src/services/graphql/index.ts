@@ -8,6 +8,7 @@ import type {
   WithdrawalsEvents,
   EncryptedNotesEvents,
   BatchGraphOnProgress,
+  EchoEvents,
 } from '../events';
 import {
   _META,
@@ -17,6 +18,7 @@ import {
   GET_WITHDRAWALS,
   GET_NOTE_ACCOUNTS,
   GET_ENCRYPTED_NOTES,
+  GET_ECHO_EVENTS,
 } from './queries';
 
 export * from './queries';
@@ -658,6 +660,132 @@ export async function getNoteAccounts({
     return {
       events: [],
       lastSyncBlock: null,
+    };
+  }
+}
+
+export interface GraphEchoEvents {
+  noteAccounts: {
+    id: string;
+    blockNumber: string;
+    address: string;
+    encryptedAccount: string;
+  }[];
+  _meta: {
+    block: {
+      number: number;
+    };
+    hasIndexingErrors: boolean;
+  };
+}
+
+export interface getGraphEchoEventsParams {
+  graphApi: string;
+  subgraphName: string;
+  fromBlock: number;
+  fetchDataOptions?: fetchDataOptions;
+  onProgress?: BatchGraphOnProgress;
+}
+
+export function getGraphEchoEvents({
+  graphApi,
+  subgraphName,
+  fromBlock,
+  fetchDataOptions,
+}: getGraphEchoEventsParams): Promise<GraphEchoEvents> {
+  return queryGraph<GraphEchoEvents>({
+    graphApi,
+    subgraphName,
+    query: GET_ECHO_EVENTS,
+    variables: {
+      first,
+      fromBlock,
+    },
+    fetchDataOptions,
+  });
+}
+
+export async function getAllGraphEchoEvents({
+  graphApi,
+  subgraphName,
+  fromBlock,
+  fetchDataOptions,
+  onProgress,
+}: getGraphEchoEventsParams): Promise<BaseGraphEvents<EchoEvents>> {
+  try {
+    const events = [];
+    let lastSyncBlock = fromBlock;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let {
+        noteAccounts: result,
+        _meta: {
+          // eslint-disable-next-line prefer-const
+          block: { number: currentBlock },
+        },
+      } = await getGraphEchoEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions });
+
+      lastSyncBlock = currentBlock;
+
+      if (isEmptyArray(result)) {
+        break;
+      }
+
+      const [firstEvent] = result;
+      const [lastEvent] = result.slice(-1);
+
+      if (typeof onProgress === 'function') {
+        onProgress({
+          type: 'EchoEvents',
+          fromBlock: Number(firstEvent.blockNumber),
+          toBlock: Number(lastEvent.blockNumber),
+          count: result.length,
+        });
+      }
+
+      if (result.length < 900) {
+        events.push(...result);
+        break;
+      }
+
+      result = result.filter(({ blockNumber }) => blockNumber !== lastEvent.blockNumber);
+      fromBlock = Number(lastEvent.blockNumber);
+
+      events.push(...result);
+    }
+
+    if (!events.length) {
+      return {
+        events: [],
+        lastSyncBlock,
+      };
+    }
+
+    const result = events.map((e) => {
+      const [transactionHash, logIndex] = e.id.split('-');
+
+      return {
+        blockNumber: Number(e.blockNumber),
+        logIndex: Number(logIndex),
+        transactionHash: transactionHash,
+        address: e.address,
+        encryptedAccount: e.encryptedAccount,
+      };
+    });
+
+    const [lastEvent] = result.slice(-1);
+
+    return {
+      events: result,
+      lastSyncBlock: lastEvent && lastEvent.blockNumber >= lastSyncBlock ? lastEvent.blockNumber + 1 : lastSyncBlock,
+    };
+  } catch (err) {
+    console.log('Error from getAllGraphEchoEvents query');
+    console.log(err);
+    return {
+      events: [],
+      lastSyncBlock: fromBlock,
     };
   }
 }

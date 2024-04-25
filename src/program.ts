@@ -13,6 +13,7 @@ import {
   RelayerRegistry__factory,
   Aggregator__factory,
   Governance__factory,
+  Echoer__factory,
 } from '@tornado/contracts';
 import {
   JsonRpcProvider,
@@ -62,6 +63,7 @@ import {
   TornadoFeeOracle,
   TokenPriceOracle,
   calculateSnarkProof,
+  NodeEchoService,
   NodeEncryptedNotesService,
   NodeGovernanceService,
   RelayerClient,
@@ -1257,10 +1259,11 @@ export function tornadoProgram() {
             registrySubgraph,
             tokens,
             routerContract,
+            echoContract,
             registryContract,
             ['governance.contract.tornadocash.eth']: governanceContract,
             deployedBlock,
-            constants: { GOVERNANCE_BLOCK, REGISTRY_BLOCK, ENCRYPTED_NOTES_BLOCK },
+            constants: { GOVERNANCE_BLOCK, REGISTRY_BLOCK, NOTE_ACCOUNT_BLOCK, ENCRYPTED_NOTES_BLOCK },
           } = config;
 
           const provider = getProgramProvider(netId, rpc, config, {
@@ -1300,6 +1303,20 @@ export function tornadoProgram() {
 
             await registryService.updateEvents();
           }
+
+          const echoService = new NodeEchoService({
+            netId,
+            provider,
+            graphApi,
+            subgraphName: tornadoSubgraph,
+            Echoer: Echoer__factory.connect(echoContract, provider),
+            deployedBlock: NOTE_ACCOUNT_BLOCK,
+            fetchDataOptions,
+            cacheDirectory: EVENTS_DIR,
+            userDirectory: SAVED_DIR,
+          });
+
+          await echoService.updateEvents();
 
           const encryptedNotesService = new NodeEncryptedNotesService({
             netId,

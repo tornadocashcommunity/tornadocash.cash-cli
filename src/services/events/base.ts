@@ -1,5 +1,12 @@
 import { BaseContract, Provider, EventLog, TransactionResponse, getAddress, Block, ContractEventName } from 'ethers';
-import type { Tornado, TornadoRouter, TornadoProxyLight, Governance, RelayerRegistry } from '@tornado/contracts';
+import type {
+  Tornado,
+  TornadoRouter,
+  TornadoProxyLight,
+  Governance,
+  RelayerRegistry,
+  Echoer,
+} from '@tornado/contracts';
 import * as graph from '../graphql';
 import {
   BatchEventsService,
@@ -21,6 +28,7 @@ import type {
   GovernanceUndelegatedEvents,
   RegistersEvents,
   BaseGraphEvents,
+  EchoEvents,
 } from './types';
 
 export const DEPOSIT = 'deposit';
@@ -454,6 +462,76 @@ export class BaseDepositsService extends BaseEventsService<DepositsEvents | With
   }
 }
 
+export type BaseEchoServiceConstructor = {
+  netId: number | string;
+  provider: Provider;
+  graphApi?: string;
+  subgraphName?: string;
+  Echoer: Echoer;
+  deployedBlock?: number;
+  fetchDataOptions?: fetchDataOptions;
+};
+
+export class BaseEchoService extends BaseEventsService<EchoEvents> {
+  constructor({
+    netId,
+    provider,
+    graphApi,
+    subgraphName,
+    Echoer,
+    deployedBlock,
+    fetchDataOptions,
+  }: BaseEchoServiceConstructor) {
+    super({ netId, provider, graphApi, subgraphName, contract: Echoer, deployedBlock, fetchDataOptions });
+  }
+
+  getInstanceName(): string {
+    return `echo_${this.netId}`;
+  }
+
+  getType(): string {
+    return 'Echo';
+  }
+
+  getGraphMethod(): string {
+    return 'getAllGraphEchoEvents';
+  }
+
+  async formatEvents(events: EventLog[]) {
+    return events
+      .map(({ blockNumber, index: logIndex, transactionHash, args }) => {
+        const { who, data } = args;
+
+        if (who && data) {
+          const eventObjects = {
+            blockNumber,
+            logIndex,
+            transactionHash,
+          };
+
+          return {
+            ...eventObjects,
+            address: who,
+            encryptedAccount: data,
+          };
+        }
+      })
+      .filter((e) => e) as EchoEvents[];
+  }
+
+  async getEventsFromGraph({ fromBlock }: { fromBlock: number }): Promise<BaseEvents<EchoEvents>> {
+    // TheGraph doesn't support our batch sync due to missing blockNumber field
+    if (!this.graphApi || this.graphApi.includes('api.thegraph.com')) {
+      return {
+        events: [],
+        lastBlock: fromBlock,
+      };
+    }
+
+    return super.getEventsFromGraph({ fromBlock });
+  }
+}
+
 export type BaseEncryptedNotesServiceConstructor = {
   netId: number | string;
   provider: Provider;
@@ -556,7 +634,7 @@ export class BaseGovernanceService extends BaseEventsService<BaseGovernanceEvent
   }
 
   getGraphMethod() {
-    return 'governanceEvents';
+    return 'getGovernanceEvents';
   }
 
   async formatEvents(events: EventLog[]): Promise<BaseGovernanceEventTypes[]> {

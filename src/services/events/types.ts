@@ -64,6 +64,11 @@ export type WithdrawalsEvents = MinimalEvents & {
   timestamp: number;
 };
 
+export type EchoEvents = MinimalEvents & {
+  address: string;
+  encryptedAccount: string;
+};
+
 export type EncryptedNotesEvents = MinimalEvents & {
   encryptedNote: string;
 };
