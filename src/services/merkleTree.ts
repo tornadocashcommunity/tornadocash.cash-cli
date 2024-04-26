@@ -8,7 +8,7 @@ import type { DepositsEvents } from './events';
 
 export type MerkleTreeConstructor = DepositType & {
   Tornado: Tornado;
-  commitment?: string;
+  commitmentHex?: string;
   merkleTreeHeight?: number;
   emptyElement?: string;
   merkleWorkerPath?: string;
@@ -19,7 +19,7 @@ export class MerkleTreeService {
   amount: string;
   netId: number;
   Tornado: Tornado;
-  commitment?: string;
+  commitmentHex?: string;
   instanceName: string;
 
   merkleTreeHeight: number;
@@ -32,7 +32,7 @@ export class MerkleTreeService {
     amount,
     currency,
     Tornado,
-    commitment,
+    commitmentHex,
     merkleTreeHeight = 20,
     emptyElement = '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     merkleWorkerPath,
@@ -45,7 +45,7 @@ export class MerkleTreeService {
 
     this.Tornado = Tornado;
     this.instanceName = instanceName;
-    this.commitment = commitment;
+    this.commitmentHex = commitmentHex;
 
     this.merkleTreeHeight = merkleTreeHeight;
     this.emptyElement = emptyElement;

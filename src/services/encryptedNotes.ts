@@ -4,6 +4,11 @@ import { Wallet, computeAddress } from 'ethers';
 import { crypto, base64ToBytes, bytesToBase64, bytesToHex, hexToBytes, toFixedHex, concatBytes } from './utils';
 import { EchoEvents, EncryptedNotesEvents } from './events';
 
+export interface NoteToEncrypt {
+  address: string;
+  noteHex: string;
+}
+
 export interface DecryptedNotes {
   blockNumber: number;
   address: string;
@@ -110,26 +115,39 @@ export class NoteAccount {
   /**
    * Decrypt Echoer backuped note encryption account with private keys
    */
-  decryptAccountWithWallet(wallet: Wallet, event: EchoEvents): NoteAccount {
+  decryptAccountsWithWallet(wallet: Wallet, events: EchoEvents[]): NoteAccount[] {
     let { privateKey } = wallet;
 
     if (privateKey.startsWith('0x')) {
       privateKey = privateKey.replace('0x', '');
     }
 
-    const unpackedMessage = unpackEncryptedMessage(event.encryptedAccount);
+    const decryptedEvents = [];
 
-    const recoveryKey = decrypt({
-      encryptedData: unpackedMessage,
-      privateKey,
-    });
+    for (const event of events) {
+      try {
+        const unpackedMessage = unpackEncryptedMessage(event.encryptedAccount);
 
-    return new NoteAccount({
-      netId: this.netId,
-      blockNumber: event.blockNumber,
-      recoveryKey,
-      Echoer: this.Echoer,
-    });
+        const recoveryKey = decrypt({
+          encryptedData: unpackedMessage,
+          privateKey,
+        });
+
+        decryptedEvents.push(
+          new NoteAccount({
+            netId: this.netId,
+            blockNumber: event.blockNumber,
+            recoveryKey,
+            Echoer: this.Echoer,
+          }),
+        );
+      } catch {
+        // decryption may fail for invalid accounts
+        continue;
+      }
+    }
+
+    return decryptedEvents;
   }
 
   decryptNotes(events: EncryptedNotesEvents[]): DecryptedNotes[] {
@@ -156,5 +174,15 @@ export class NoteAccount {
     }
 
     return decryptedEvents;
+  }
+
+  encryptNote({ address, noteHex }: NoteToEncrypt) {
+    const encryptedData = encrypt({
+      publicKey: this.recoveryPublicKey,
+      data: `${address}-${noteHex}`,
+      version: 'x25519-xsalsa20-poly1305',
+    });
+
+    return packEncryptedMessage(encryptedData);
   }
 }

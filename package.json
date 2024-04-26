@@ -26,7 +26,7 @@
     "compliance": "ts-node src/cli.ts compliance",
     "syncEvents": "ts-node src/cli.ts syncEvents",
     "relayers": "ts-node src/cli.ts relayers",
-    "createNoteAccount": "ts-node src/cli.ts createNoteAccount",
+    "createAccount": "ts-node src/cli.ts createAccount",
     "decryptNotes": "ts-node src/cli.ts decryptNotes",
     "send": "ts-node src/cli.ts send",
     "balance": "ts-node src/cli.ts balance",

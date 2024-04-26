@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import workerThreads from 'worker_threads';
 import { MerkleTree, Element, TreeEdge, PartialMerkleTree } from '@tornado/fixed-merkle-tree';
 import { mimc, isNode } from './services';
@@ -65,5 +65,5 @@ if (isNode && workerThreads) {
     postMessage(merkleTree.toString());
   });
 } else {
-  throw new Error('This browser / environment doesn\'t support workers!');
+  throw new Error('This browser / environment does not support workers!');
 }

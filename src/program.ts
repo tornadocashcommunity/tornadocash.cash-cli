@@ -524,13 +524,14 @@ export function tornadoProgram() {
     .action(async (netId: string | number, currency: string, amount: string, cmdOptions: commonProgramOptions) => {
       const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
       currency = currency.toLowerCase();
-      const { rpc } = options;
+      const { rpc, accountKey } = options;
 
       const config = networkConfig[`netId${netId}`];
 
       const {
         multicall: multicallAddress,
         routerContract,
+        echoContract,
         nativeCurrency,
         tokens: { [currency]: currencyConfig },
       } = config;
@@ -553,6 +554,14 @@ export function tornadoProgram() {
         provider,
       });
 
+      const noteAccount = accountKey
+        ? new NoteAccount({
+            netId,
+            recoveryKey: accountKey,
+            Echoer: Echoer__factory.connect(echoContract, provider),
+          })
+        : undefined;
+
       if (!signer) {
         throw new Error(
           'Signer not defined, make sure you have either viewOnly address, mnemonic, or private key configured',
@@ -569,22 +578,20 @@ export function tornadoProgram() {
           name: 'getEthBalance',
           params: [signer.address],
         },
-        /* eslint-disable prettier/prettier */
         ...(!isEth
           ? [
-            {
-              contract: Token as ERC20,
-              name: 'balanceOf',
-              params: [signer.address],
-            },
-            {
-              contract: Token as ERC20,
-              name: 'allowance',
-              params: [signer.address, routerContract],
-            },
-          ]
+              {
+                contract: Token as ERC20,
+                name: 'balanceOf',
+                params: [signer.address],
+              },
+              {
+                contract: Token as ERC20,
+                name: 'allowance',
+                params: [signer.address, routerContract],
+              },
+            ]
           : []),
-        /* eslint-enable prettier/prettier */
       ]);
 
       if (isEth && denomination > ethBalance) {
@@ -616,18 +623,36 @@ export function tornadoProgram() {
 
       const { note, noteHex, commitmentHex } = deposit;
 
+      const encryptedNote = noteAccount
+        ? noteAccount.encryptNote({
+            address: instanceAddress,
+            noteHex,
+          })
+        : '0x';
+
+      const backupFile = `./backup-tornado-${currency}-${amount}-${netId}-${noteHex.slice(0, 10)}.txt`;
+
       console.log(`New deposit: ${deposit.toString()}\n`);
 
-      await writeFile(`./backup-tornado-${currency}-${amount}-${netId}-${noteHex.slice(0, 10)}.txt`, note, {
-        encoding: 'utf8',
-      });
+      console.log(`Writing note backup at ${backupFile}\n`);
+
+      await writeFile(backupFile, note, { encoding: 'utf8' });
+
+      if (encryptedNote !== '0x') {
+        console.log(`Storing encrypted note on-chain for backup (Account key: ${accountKey})\n`);
+      }
 
       await programSendTransaction({
         signer,
         options,
-        populatedTransaction: await TornadoProxy.deposit.populateTransaction(instanceAddress, commitmentHex, '0x', {
-          value: isEth ? denomination : BigInt(0),
-        }),
+        populatedTransaction: await TornadoProxy.deposit.populateTransaction(
+          instanceAddress,
+          commitmentHex,
+          encryptedNote,
+          {
+            value: isEth ? denomination : BigInt(0),
+          },
+        ),
       });
 
       process.exit(0);
@@ -689,22 +714,20 @@ export function tornadoProgram() {
           name: 'getEthBalance',
           params: [signer.address],
         },
-        /* eslint-disable prettier/prettier */
         ...(!isEth
           ? [
-            {
-              contract: Token as ERC20,
-              name: 'balanceOf',
-              params: [signer.address],
-            },
-            {
-              contract: Token as ERC20,
-              name: 'allowance',
-              params: [signer.address, routerContract],
-            },
-          ]
+              {
+                contract: Token as ERC20,
+                name: 'balanceOf',
+                params: [signer.address],
+              },
+              {
+                contract: Token as ERC20,
+                name: 'allowance',
+                params: [signer.address, routerContract],
+              },
+            ]
           : []),
-        /* eslint-enable prettier/prettier */
       ]);
 
       if (isEth && denomination > ethBalance) {
@@ -923,15 +946,13 @@ export function tornadoProgram() {
           readFile(CIRCUIT_PATH, { encoding: 'utf8' }).then((s) => JSON.parse(s)),
           readFile(KEY_PATH).then((b) => new Uint8Array(b).buffer),
           depositTreePromise,
-          /* eslint-disable prettier/prettier */
           !walletWithdrawal
             ? getProgramRelayer({
-              options,
-              fetchDataOptions,
-              netId,
-            }).then(({ relayerClient }) => relayerClient)
+                options,
+                fetchDataOptions,
+                netId,
+              }).then(({ relayerClient }) => relayerClient)
             : undefined,
-          /* eslint-enable prettier/prettier */
           tornadoFeeOracle.fetchL1OptimismFee(),
           !isEth ? tokenPriceOracle.fetchPrices([tokenAddress as string]).then((p) => p[0]) : BigInt(0),
           provider.getFeeData(),
@@ -1466,7 +1487,7 @@ export function tornadoProgram() {
     });
 
   program
-    .command('createNoteAccount')
+    .command('createAccount')
     .description(
       'Creates and save on-chain account that would store encrypted notes. \n\n' +
         'Would first lookup on on-chain records to see if the notes are stored. \n\n' +
@@ -1532,7 +1553,7 @@ export function tornadoProgram() {
 
       const userEvents = echoEvents.filter(({ address }) => address === signer.address);
 
-      const existingAccounts = userEvents.map((e) => newAccount.decryptAccountWithWallet(signer, e));
+      const existingAccounts = newAccount.decryptAccountsWithWallet(signer, userEvents);
 
       const accountsTable = new Table();
 
@@ -1587,7 +1608,7 @@ export function tornadoProgram() {
     .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
     .argument(
       '[accountKey]',
-      'Account key generated from UI or the createNoteAccount to store encrypted notes on-chain',
+      'Account key generated from UI or the createAccount to store encrypted notes on-chain',
       parseRecoveryKey,
     )
     .action(async (netId: string | number, accountKey: string | undefined, cmdOptions: commonProgramOptions) => {
@@ -1614,7 +1635,7 @@ export function tornadoProgram() {
 
       if (!accountKey) {
         throw new Error(
-          'No account key find! Please supply correct account key from either UI or find one with createNoteAccount command',
+          'No account key find! Please supply correct account key from either UI or find one with createAccount command',
         );
       }
 
@@ -1720,15 +1741,14 @@ export function tornadoProgram() {
         const txGasPrice = feeData.maxFeePerGas
           ? feeData.maxFeePerGas + (feeData.maxPriorityFeePerGas || BigInt(0))
           : feeData.gasPrice || BigInt(0);
-        /* eslint-disable prettier/prettier */
         const txFees = feeData.maxFeePerGas
           ? {
-            maxFeePerGas: feeData.maxFeePerGas,
-            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
-          }
+              maxFeePerGas: feeData.maxFeePerGas,
+              maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+            }
           : {
-            gasPrice: feeData.gasPrice,
-          };
+              gasPrice: feeData.gasPrice,
+            };
 
         let toSend: bigint;
 
@@ -1764,10 +1784,10 @@ export function tornadoProgram() {
               ...txFees,
             });
 
-            const bumpedGas = (estimatedGas !== BigInt(21000) && signer.gasLimitBump
-              ? (estimatedGas * (BigInt(10000) + BigInt(signer.gasLimitBump))) / BigInt(10000)
-              : estimatedGas
-            );
+            const bumpedGas =
+              estimatedGas !== BigInt(21000) && signer.gasLimitBump
+                ? (estimatedGas * (BigInt(10000) + BigInt(signer.gasLimitBump))) / BigInt(10000)
+                : estimatedGas;
 
             toSend = ethBalance - txGasPrice * bumpedGas;
           }
@@ -1779,15 +1799,14 @@ export function tornadoProgram() {
           populatedTransaction: tokenAddress
             ? await Token.transfer.populateTransaction(to, toSend)
             : await signer.populateTransaction({
-              type: txType,
-              from: signer.address,
-              to,
-              value: toSend,
-              nonce,
-              ...txFees,
-            }),
+                type: txType,
+                from: signer.address,
+                to,
+                value: toSend,
+                nonce,
+                ...txFees,
+              }),
         });
-        /* eslint-enable prettier/prettier */
 
         process.exit(0);
       },
@@ -1891,7 +1910,6 @@ export function tornadoProgram() {
         options,
         populatedTransaction: deserializedTx,
       });
-      /* eslint-enable prettier/prettier */
 
       process.exit(0);
     });
@@ -1924,14 +1942,24 @@ export function tornadoProgram() {
     });
 
   // common options
-  /* eslint-disable prettier/prettier */
   program.commands.forEach((cmd) => {
     cmd.option('-r, --rpc <RPC_URL>', 'The RPC that CLI should interact with', parseUrl);
     cmd.option('-e, --eth-rpc <ETHRPC_URL>', 'The Ethereum Mainnet RPC that CLI should interact with', parseUrl);
     cmd.option('-g, --graph <GRAPH_URL>', 'The Subgraph API that CLI should interact with', parseUrl);
-    cmd.option('-G, --eth-graph <ETHGRAPH_URL>', 'The Ethereum Mainnet Subgraph API that CLI should interact with', parseUrl);
-    cmd.option('-d, --disable-graph', 'Disable Graph API - Does not enable Subgraph API and use only local RPC as an event source');
-    cmd.option('-a, --account-key <ACCOUNT_KEY>', 'Account key generated from UI or the createNoteAccount to store encrypted notes on-chain', parseRecoveryKey);
+    cmd.option(
+      '-G, --eth-graph <ETHGRAPH_URL>',
+      'The Ethereum Mainnet Subgraph API that CLI should interact with',
+      parseUrl,
+    );
+    cmd.option(
+      '-d, --disable-graph',
+      'Disable Graph API - Does not enable Subgraph API and use only local RPC as an event source',
+    );
+    cmd.option(
+      '-a, --account-key <ACCOUNT_KEY>',
+      'Account key generated from UI or the createAccount to store encrypted notes on-chain',
+      parseRecoveryKey,
+    );
     cmd.option('-R, --relayer <RELAYER>', 'Withdraw via relayer (Should be either .eth name or URL)', parseRelayer);
     cmd.option('-w, --wallet-withdrawal', 'Withdrawal via wallet (Should not be linked with deposits)');
     cmd.option('-T, --tor-port <TOR_PORT>', 'Optional tor port', parseNumber);
@@ -1943,13 +1971,13 @@ export function tornadoProgram() {
     );
     cmd.option(
       '-m, --mnemonic <MNEMONIC>',
-      'Wallet BIP39 Mnemonic Phrase - If you didn\'t add it to .env file and it is needed for operation',
+      'Wallet BIP39 Mnemonic Phrase - If you did not add it to .env file and it is needed for operation',
       parseMnemonic,
     );
     cmd.option('-i, --mnemonic-index <MNEMONIC_INDEX>', 'Optional wallet mnemonic index', parseNumber);
     cmd.option(
       '-p, --private-key <PRIVATE_KEY>',
-      'Wallet private key - If you didn\'t add it to .env file and it is needed for operation',
+      'Wallet private key - If you did not add it to .env file and it is needed for operation',
       parseKey,
     );
     cmd.option(
@@ -1958,7 +1986,6 @@ export function tornadoProgram() {
     );
     cmd.option('-l, --local-rpc', 'Local node mode - Does not submit signed transaction to the node');
   });
-  /* eslint-enable prettier/prettier */
 
   return program;
 }

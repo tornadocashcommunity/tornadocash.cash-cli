@@ -213,47 +213,47 @@ export async function fetchData(url: string, options: fetchDataOptions = {}) {
   throw errorObject;
 }
 
-/* eslint-disable prettier/prettier, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const fetchGetUrlFunc =
   (options: fetchDataOptions = {}): FetchGetUrlFunc =>
-    async (req, _signal) => {
-      let signal;
+  async (req, _signal) => {
+    let signal;
 
-      if (_signal) {
-        const controller = new AbortController();
-        signal = controller.signal;
-        _signal.addListener(() => {
-          controller.abort();
-        });
-      }
-
-      const init = {
-        ...options,
-        method: req.method || 'POST',
-        headers: req.headers,
-        body: req.body || undefined,
-        signal,
-        returnResponse: true,
-      };
-
-      const resp = await fetchData(req.url, init);
-
-      const headers = {} as { [key in string]: any };
-      resp.headers.forEach((value: any, key: string) => {
-        headers[key.toLowerCase()] = value;
+    if (_signal) {
+      const controller = new AbortController();
+      signal = controller.signal;
+      _signal.addListener(() => {
+        controller.abort();
       });
+    }
 
-      const respBody = await resp.arrayBuffer();
-      const body = respBody == null ? null : new Uint8Array(respBody);
-
-      return {
-        statusCode: resp.status,
-        statusMessage: resp.statusText,
-        headers,
-        body,
-      };
+    const init = {
+      ...options,
+      method: req.method || 'POST',
+      headers: req.headers,
+      body: req.body || undefined,
+      signal,
+      returnResponse: true,
     };
-/* eslint-enable prettier/prettier, @typescript-eslint/no-explicit-any */
+
+    const resp = await fetchData(req.url, init);
+
+    const headers = {} as { [key in string]: any };
+    resp.headers.forEach((value: any, key: string) => {
+      headers[key.toLowerCase()] = value;
+    });
+
+    const respBody = await resp.arrayBuffer();
+    const body = respBody == null ? null : new Uint8Array(respBody);
+
+    return {
+      statusCode: resp.status,
+      statusMessage: resp.statusText,
+      headers,
+      body,
+    };
+  };
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // caching to improve performance
 const oracleMapper = new Map();

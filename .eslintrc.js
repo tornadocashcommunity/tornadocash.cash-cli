@@ -42,10 +42,12 @@ module.exports = {
       }
     ],
     "import/order": ["error"],
+    /**
     "indent": [
       "error",
       2
     ],
+    **/
     "linebreak-style": [
       "error",
       "unix"
