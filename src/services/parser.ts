@@ -60,3 +60,18 @@ export function parseKey(value?: string): string {
   }
   return value;
 }
+
+/**
+ * Recovery key shouldn't have a 0x prefix (Also this is how the UI generates)
+ */
+export function parseRecoveryKey(value?: string): string {
+  if (!value) {
+    throw new InvalidArgumentError('Invalid Recovery Key');
+  }
+  try {
+    computeAddress('0x' + value);
+  } catch {
+    throw new InvalidArgumentError('Invalid Recovery Key');
+  }
+  return value;
+}

@@ -769,7 +769,7 @@ export async function getAllGraphEchoEvents({
         blockNumber: Number(e.blockNumber),
         logIndex: Number(logIndex),
         transactionHash: transactionHash,
-        address: e.address,
+        address: getAddress(e.address),
         encryptedAccount: e.encryptedAccount,
       };
     });

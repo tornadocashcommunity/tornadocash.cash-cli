@@ -95,6 +95,21 @@ export type networkConfig = {
 export const blockSyncInterval = 10000;
 export const enabledChains = ['1', '10', '56', '100', '137', '42161', '43114', '11155111'];
 
+export function getInstanceByAddress({ netId, address }: { netId: number | string; address: string }) {
+  const { tokens } = networkConfig[`netId${netId}`];
+
+  for (const [currency, { instanceAddress }] of Object.entries(tokens)) {
+    for (const [amount, instance] of Object.entries(instanceAddress)) {
+      if (instance === address) {
+        return {
+          amount,
+          currency,
+        };
+      }
+    }
+  }
+}
+
 const theGraph = {
   name: 'Hosted Graph',
   url: 'https://api.thegraph.com',

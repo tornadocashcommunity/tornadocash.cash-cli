@@ -4,6 +4,7 @@ export * from './schemas';
 export * from './batch';
 export * from './data';
 export * from './deposits';
+export * from './encryptedNotes';
 export * from './fees';
 export * from './merkleTree';
 export * from './mimc';

@@ -1,4 +1,5 @@
 import { URL } from 'url';
+import { webcrypto } from 'crypto';
 import BN from 'bn.js';
 import type { BigNumberish } from 'ethers';
 
@@ -15,6 +16,8 @@ export const isNode =
       browser?: boolean;
     }
   ).browser && typeof globalThis.window === 'undefined';
+
+export const crypto = isNode ? webcrypto : (globalThis.crypto as typeof webcrypto);
 
 export const chunk = <T>(arr: T[], size: number): T[][] =>
   [...Array(Math.ceil(arr.length / size))].map((_, i) => arr.slice(size * i, size + size * i));
@@ -35,26 +38,28 @@ export function validateUrl(url: string, protocols?: string[]) {
   }
 }
 
+export function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const totalSize = arrays.reduce((acc, e) => acc + e.length, 0);
+  const merged = new Uint8Array(totalSize);
+
+  arrays.forEach((array, i, arrays) => {
+    const offset = arrays.slice(0, i).reduce((acc, e) => acc + e.length, 0);
+    merged.set(array, offset);
+  });
+
+  return merged;
+}
+
 export function bufferToBytes(b: Buffer) {
   return new Uint8Array(b.buffer);
 }
 
 export function bytesToBase64(bytes: Uint8Array) {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; ++i) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+  return btoa(String.fromCharCode.apply(null, Array.from(bytes)));
 }
 
 export function base64ToBytes(base64: string) {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
 export function bytesToHex(bytes: Uint8Array) {
@@ -64,6 +69,16 @@ export function bytesToHex(bytes: Uint8Array) {
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
   );
+}
+
+export function hexToBytes(hexString: string) {
+  if (hexString.slice(0, 2) === '0x') {
+    hexString = hexString.replace('0x', '');
+  }
+  if (hexString.length % 2 !== 0) {
+    hexString = '0' + hexString;
+  }
+  return Uint8Array.from((hexString.match(/.{1,2}/g) as string[]).map((byte) => parseInt(byte, 16)));
 }
 
 // Convert BE encoded bytes (Buffer | Uint8Array) array to BigInt

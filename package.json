@@ -26,6 +26,8 @@
     "compliance": "ts-node src/cli.ts compliance",
     "syncEvents": "ts-node src/cli.ts syncEvents",
     "relayers": "ts-node src/cli.ts relayers",
+    "createNoteAccount": "ts-node src/cli.ts createNoteAccount",
+    "decryptNotes": "ts-node src/cli.ts decryptNotes",
     "send": "ts-node src/cli.ts send",
     "balance": "ts-node src/cli.ts balance",
     "sign": "ts-node src/cli.ts sign",
@@ -50,6 +52,7 @@
     "yarn.lock"
   ],
   "dependencies": {
+    "@metamask/eth-sig-util": "^7.0.1",
     "@tornado/contracts": "1.0.0",
     "@tornado/fixed-merkle-tree": "0.7.3",
     "@tornado/snarkjs": "0.1.20",

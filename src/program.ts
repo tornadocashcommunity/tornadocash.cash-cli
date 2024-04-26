@@ -73,10 +73,13 @@ import {
   fetchData,
   fetchDataOptions,
   networkConfig,
+  getInstanceByAddress,
   subdomains,
   Config,
   enabledChains,
   substring,
+  NoteAccount,
+  parseRecoveryKey,
 } from './services';
 
 const DEFAULT_GAS_LIMIT = 600_000;
@@ -109,6 +112,7 @@ export type commonProgramOptions = {
   graph?: string;
   ethGraph?: string;
   disableGraph?: boolean;
+  accountKey?: string;
   relayer?: string;
   walletWithdrawal?: boolean;
   torPort?: number;
@@ -163,6 +167,7 @@ export async function getProgramOptions(options: commonProgramOptions): Promise<
     graph: options.graph || (process.env.GRAPH_URL ? parseUrl(process.env.GRAPH_URL) : undefined),
     ethGraph: options.ethGraph || (process.env.ETHGRAPH_URL ? parseUrl(process.env.ETHGRAPH_URL) : undefined),
     disableGraph: Boolean(options.disableGraph) || (process.env.DISABLE_GRAPH === 'true' ? true : undefined),
+    accountKey: options.accountKey || (process.env.ACCOUNT_KEY ? parseRecoveryKey(process.env.ACCOUNT_KEY) : undefined),
     relayer: options.relayer || (process.env.RELAYER ? parseRelayer(process.env.RELAYER) : undefined),
     walletWithdrawal:
       Boolean(options.walletWithdrawal) || (process.env.WALLET_WITHDRAWAL === 'true' ? true : undefined),
@@ -851,9 +856,9 @@ export function tornadoProgram() {
         // If we have MERKLE_WORKER_PATH run worker at background otherwise resolve it here
         const depositTreeInitiator = await (async () => {
           if (MERKLE_WORKER_PATH) {
-            return () => merkleTreeService.verifyTree({ events: depositEvents }) as Promise<MerkleTree>;
+            return () => merkleTreeService.verifyTree(depositEvents) as Promise<MerkleTree>;
           }
-          return (await merkleTreeService.verifyTree({ events: depositEvents })) as MerkleTree;
+          return (await merkleTreeService.verifyTree(depositEvents)) as MerkleTree;
         })();
 
         let depositTreePromise: Promise<MerkleTree> | MerkleTree;
@@ -1178,9 +1183,9 @@ export function tornadoProgram() {
       // If we have MERKLE_WORKER_PATH run worker at background otherwise resolve it here
       const depositTreePromise = await (async () => {
         if (MERKLE_WORKER_PATH) {
-          return () => merkleTreeService.verifyTree({ events: depositEvents }) as Promise<MerkleTree>;
+          return () => merkleTreeService.verifyTree(depositEvents) as Promise<MerkleTree>;
         }
-        return (await merkleTreeService.verifyTree({ events: depositEvents })) as MerkleTree;
+        return (await merkleTreeService.verifyTree(depositEvents)) as MerkleTree;
       })();
 
       const [withdrawalEvents] = await Promise.all([
@@ -1381,12 +1386,9 @@ export function tornadoProgram() {
               // If we have MERKLE_WORKER_PATH run worker at background otherwise resolve it here
               const depositTreePromise = await (async () => {
                 if (MERKLE_WORKER_PATH) {
-                  return () =>
-                    merkleTreeService.verifyTree({ events: depositEvents as DepositsEvents[] }) as Promise<MerkleTree>;
+                  return () => merkleTreeService.verifyTree(depositEvents as DepositsEvents[]) as Promise<MerkleTree>;
                 }
-                return (await merkleTreeService.verifyTree({
-                  events: depositEvents as DepositsEvents[],
-                })) as MerkleTree;
+                return (await merkleTreeService.verifyTree(depositEvents as DepositsEvents[])) as MerkleTree;
               })();
 
               await Promise.all([
@@ -1459,6 +1461,199 @@ export function tornadoProgram() {
 
       console.log(relayersTable.toString() + '\n');
       console.log(invalidRelayersTable.toString() + '\n');
+
+      process.exit(0);
+    });
+
+  program
+    .command('createNoteAccount')
+    .description(
+      'Creates and save on-chain account that would store encrypted notes. \n\n' +
+        'Would first lookup on on-chain records to see if the notes are stored. \n\n' +
+        'Requires a valid signable wallet (mnemonic or a private key) to work (Since they would encrypt or encrypted)',
+    )
+    .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
+    .action(async (netId: string | number, cmdOptions: commonProgramOptions) => {
+      const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
+      const { rpc } = options;
+
+      const config = networkConfig[`netId${netId}`];
+
+      const {
+        echoContract,
+        tornadoSubgraph,
+        constants: { ['NOTE_ACCOUNT_BLOCK']: deployedBlock },
+      } = config;
+
+      const provider = getProgramProvider(netId, rpc, config, {
+        ...fetchDataOptions,
+      });
+
+      const signer = getProgramSigner({
+        options,
+        provider,
+      });
+
+      const graphApi = getProgramGraphAPI(options, config);
+
+      if (!signer || signer instanceof VoidSigner) {
+        throw new Error(
+          'No wallet found, make your you have supplied a valid mnemonic or private key before using this command',
+        );
+      }
+
+      /**
+       * Find for any existing note accounts
+       */
+      const walletPublicKey = NoteAccount.getWalletPublicKey(signer);
+
+      const Echoer = Echoer__factory.connect(echoContract, provider);
+
+      const newAccount = new NoteAccount({
+        netId,
+        Echoer,
+      });
+
+      const echoService = new NodeEchoService({
+        netId,
+        provider,
+        graphApi,
+        subgraphName: tornadoSubgraph,
+        Echoer,
+        deployedBlock,
+        fetchDataOptions,
+        cacheDirectory: EVENTS_DIR,
+        userDirectory: SAVED_DIR,
+      });
+
+      console.log('Getting historic note accounts would take a while\n');
+
+      const echoEvents = (await echoService.updateEvents()).events;
+
+      const userEvents = echoEvents.filter(({ address }) => address === signer.address);
+
+      const existingAccounts = userEvents.map((e) => newAccount.decryptAccountWithWallet(signer, e));
+
+      const accountsTable = new Table();
+
+      if (existingAccounts.length) {
+        accountsTable.push(
+          [{ colSpan: 2, content: `Note Accounts (${netId})`, hAlign: 'center' }],
+          [{ colSpan: 2, content: `Backed up by: ${signer.address}`, hAlign: 'center' }],
+          ['blockNumber', 'noteAccount'].map((content) => ({ content: colors.red.bold(content) })),
+          ...existingAccounts.map(({ blockNumber, recoveryKey }) => {
+            return [blockNumber, recoveryKey];
+          }),
+        );
+
+        console.log(accountsTable.toString() + '\n');
+      } else {
+        accountsTable.push(
+          [{ colSpan: 1, content: `New Note Account (${netId})`, hAlign: 'center' }],
+          ['noteAccount'].map((content) => ({ content: colors.red.bold(content) })),
+          [newAccount.recoveryKey],
+          [{ colSpan: 1, content: `Would be backed up by: ${signer.address}`, hAlign: 'center' }],
+        );
+
+        const fileName = `backup-note-account-key-0x${newAccount.recoveryKey.slice(0, 8)}.txt`;
+
+        console.log('\n' + accountsTable.toString() + '\n');
+
+        console.log(`Writing backup to ${fileName}\n`);
+
+        await writeFile(fileName, newAccount.recoveryKey + '\n');
+
+        console.log('Backup encrypted account on-chain to use on UI?\n');
+
+        await promptConfirmation(options.nonInteractive);
+
+        const { data } = newAccount.getEncryptedAccount(walletPublicKey);
+
+        console.log('Sending encrypted note account backup transaction through wallet\n');
+
+        await programSendTransaction({
+          signer: signer as TornadoVoidSigner | TornadoWallet,
+          options,
+          populatedTransaction: await Echoer.echo.populateTransaction(data),
+        });
+      }
+
+      process.exit(0);
+    });
+
+  program
+    .command('decryptNotes')
+    .description('Fetch notes from deposit events and decrypt them. \n\n' + 'Requires a valid account key to work')
+    .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
+    .argument(
+      '[accountKey]',
+      'Account key generated from UI or the createNoteAccount to store encrypted notes on-chain',
+      parseRecoveryKey,
+    )
+    .action(async (netId: string | number, accountKey: string | undefined, cmdOptions: commonProgramOptions) => {
+      const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
+      const { rpc } = options;
+      if (!accountKey) {
+        accountKey = options.accountKey;
+      }
+
+      const config = networkConfig[`netId${netId}`];
+
+      const {
+        routerContract,
+        echoContract,
+        tornadoSubgraph,
+        constants: { ENCRYPTED_NOTES_BLOCK },
+      } = config;
+
+      const provider = getProgramProvider(netId, rpc, config, {
+        ...fetchDataOptions,
+      });
+
+      const graphApi = getProgramGraphAPI(options, config);
+
+      if (!accountKey) {
+        throw new Error(
+          'No account key find! Please supply correct account key from either UI or find one with createNoteAccount command',
+        );
+      }
+
+      const Echoer = Echoer__factory.connect(echoContract, provider);
+
+      const noteAccount = new NoteAccount({
+        netId,
+        recoveryKey: accountKey,
+        Echoer,
+      });
+
+      const encryptedNotesService = new NodeEncryptedNotesService({
+        netId,
+        provider,
+        graphApi,
+        subgraphName: tornadoSubgraph,
+        Router: TornadoRouter__factory.connect(routerContract, provider),
+        deployedBlock: ENCRYPTED_NOTES_BLOCK,
+        fetchDataOptions,
+        cacheDirectory: EVENTS_DIR,
+        userDirectory: SAVED_DIR,
+      });
+
+      const encryptedNoteEvents = (await encryptedNotesService.updateEvents()).events;
+
+      const accountsTable = new Table();
+
+      accountsTable.push(
+        [{ colSpan: 2, content: `Note Accounts (${netId})`, hAlign: 'center' }],
+        [{ colSpan: 2, content: `Account key: ${accountKey}`, hAlign: 'center' }],
+        ['blockNumber', 'note'].map((content) => ({ content: colors.red.bold(content) })),
+        ...noteAccount.decryptNotes(encryptedNoteEvents).map(({ blockNumber, address, noteHex }) => {
+          const { amount, currency } = getInstanceByAddress({ netId, address }) as { amount: string; currency: string };
+
+          return [blockNumber, `tornado-${currency}-${amount}-${netId}-${noteHex}`];
+        }),
+      );
+
+      console.log('\n' + accountsTable.toString() + '\n');
 
       process.exit(0);
     });
@@ -1736,6 +1931,7 @@ export function tornadoProgram() {
     cmd.option('-g, --graph <GRAPH_URL>', 'The Subgraph API that CLI should interact with', parseUrl);
     cmd.option('-G, --eth-graph <ETHGRAPH_URL>', 'The Ethereum Mainnet Subgraph API that CLI should interact with', parseUrl);
     cmd.option('-d, --disable-graph', 'Disable Graph API - Does not enable Subgraph API and use only local RPC as an event source');
+    cmd.option('-a, --account-key <ACCOUNT_KEY>', 'Account key generated from UI or the createNoteAccount to store encrypted notes on-chain', parseRecoveryKey);
     cmd.option('-R, --relayer <RELAYER>', 'Withdraw via relayer (Should be either .eth name or URL)', parseRelayer);
     cmd.option('-w, --wallet-withdrawal', 'Withdrawal via wallet (Should not be linked with deposits)');
     cmd.option('-T, --tor-port <TOR_PORT>', 'Optional tor port', parseNumber);

@@ -52,7 +52,7 @@ export class MerkleTreeService {
     this.merkleWorkerPath = merkleWorkerPath;
   }
 
-  async createTree({ events }: { events: Element[] }) {
+  async createTree(events: Element[]) {
     const { hash: hashFunction } = await mimc.getHash();
 
     if (this.merkleWorkerPath) {
@@ -113,13 +113,13 @@ export class MerkleTreeService {
     });
   }
 
-  async verifyTree({ events }: { events: DepositsEvents[] }) {
+  async verifyTree(events: DepositsEvents[]) {
     console.log(
       `\nCreating deposit tree for ${this.netId} ${this.amount} ${this.currency.toUpperCase()} would take a while\n`,
     );
 
     console.time('Created tree in');
-    const tree = await this.createTree({ events: events.map(({ commitment }) => BigInt(commitment).toString()) });
+    const tree = await this.createTree(events.map(({ commitment }) => BigInt(commitment).toString()));
     console.timeEnd('Created tree in');
     console.log('');
 
