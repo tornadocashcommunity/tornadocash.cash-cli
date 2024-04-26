@@ -1,6 +1,6 @@
 import { getEncryptionPublicKey, encrypt, decrypt, EthEncryptedData } from '@metamask/eth-sig-util';
 import { Echoer } from '@tornado/contracts';
-import { Wallet, computeAddress } from 'ethers';
+import { Wallet, computeAddress, getAddress } from 'ethers';
 import { crypto, base64ToBytes, bytesToBase64, bytesToHex, hexToBytes, toFixedHex, concatBytes } from './utils';
 import { EchoEvents, EncryptedNotesEvents } from './events';
 
@@ -164,7 +164,7 @@ export class NoteAccount {
 
         decryptedEvents.push({
           blockNumber: event.blockNumber,
-          address,
+          address: getAddress(address),
           noteHex,
         });
       } catch {

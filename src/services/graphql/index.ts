@@ -645,7 +645,7 @@ export async function getNoteAccounts({
       subgraphName,
       query: GET_NOTE_ACCOUNTS,
       variables: {
-        address,
+        address: address.toLowerCase(),
       },
       fetchDataOptions,
     });

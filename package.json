@@ -24,7 +24,7 @@
     "depositInvoice": "ts-node src/cli.ts depositInvoice",
     "withdraw": "ts-node src/cli.ts withdraw",
     "compliance": "ts-node src/cli.ts compliance",
-    "syncEvents": "ts-node src/cli.ts syncEvents",
+    "updateEvents": "ts-node src/cli.ts updateEvents",
     "relayers": "ts-node src/cli.ts relayers",
     "createAccount": "ts-node src/cli.ts createAccount",
     "decryptNotes": "ts-node src/cli.ts decryptNotes",

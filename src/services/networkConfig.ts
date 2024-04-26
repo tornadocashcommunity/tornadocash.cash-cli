@@ -56,8 +56,11 @@ export type Config = {
   networkName: string;
   deployedBlock: number;
   rpcUrls: RpcUrls;
-  multicall: string;
+  multicallContract: string;
   routerContract: string;
+  tornContract?: string;
+  governanceContract?: string;
+  stakingRewardsContract?: string;
   registryContract?: string;
   echoContract: string;
   aggregatorContract?: string;
@@ -81,11 +84,6 @@ export type Config = {
     // Should be in seconds
     MINING_BLOCK_TIME?: number;
   };
-  'torn.contract.tornadocash.eth'?: string;
-  'governance.contract.tornadocash.eth'?: string;
-  'staking-rewards.contract.tornadocash.eth'?: string;
-  'tornado-router.contract.tornadocash.eth'?: string;
-  'tornado-proxy-light.contract.tornadocash.eth'?: string;
 };
 
 export type networkConfig = {
@@ -145,7 +143,7 @@ export const networkConfig: networkConfig = {
         url: 'https://tornadocash-rpc.com',
       },
       chainnodes: {
-        name: 'Tornado RPC',
+        name: 'Chainnodes RPC',
         url: 'https://mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607',
       },
       mevblockerRPC: {
@@ -173,8 +171,11 @@ export const networkConfig: networkConfig = {
         url: 'https://1rpc.io/eth',
       },
     },
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     routerContract: '0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b',
+    tornContract: '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C',
+    governanceContract: '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce',
+    stakingRewardsContract: '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29',
     registryContract: '0x58E8dCC13BE9780fC42E8723D8EaD4CF46943dF2',
     echoContract: '0x9B27DD5Bb15d42DC224FCD0B7caEbBe16161Df42',
     aggregatorContract: '0xE8F47A78A6D52D317D0D2FFFac56739fE14D1b49',
@@ -262,14 +263,10 @@ export const networkConfig: networkConfig = {
     constants: {
       GOVERNANCE_BLOCK: 11474695,
       NOTE_ACCOUNT_BLOCK: 11842486,
-      ENCRYPTED_NOTES_BLOCK: 14248730,
+      ENCRYPTED_NOTES_BLOCK: 12143762,
       REGISTRY_BLOCK: 14173129,
       MINING_BLOCK_TIME: 15,
     },
-    'torn.contract.tornadocash.eth': '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C',
-    'governance.contract.tornadocash.eth': '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce',
-    'tornado-router.contract.tornadocash.eth': '0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b',
-    'staking-rewards.contract.tornadocash.eth': '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29',
   },
   netId56: {
     rpcCallRetryAttempt: 15,
@@ -290,7 +287,7 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Binance Smart Chain',
     deployedBlock: 8158799,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
     tornadoSubgraph: 'tornadocash/bsc-tornado-subgraph',
@@ -304,7 +301,7 @@ export const networkConfig: networkConfig = {
         url: 'https://tornadocash-rpc.com/bsc',
       },
       chainnodes: {
-        name: 'Tornado RPC',
+        name: 'Chainnodes RPC',
         url: 'https://bsc-mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607',
       },
       stackup: {
@@ -338,7 +335,6 @@ export const networkConfig: networkConfig = {
       NOTE_ACCOUNT_BLOCK: 8159269,
       ENCRYPTED_NOTES_BLOCK: 8159269,
     },
-    'tornado-proxy-light.contract.tornadocash.eth': '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
   },
   netId137: {
     rpcCallRetryAttempt: 15,
@@ -359,7 +355,7 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Polygon (Matic) Network',
     deployedBlock: 16257962,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
     gasPriceOracleContract: '0xF81A8D8D3581985D3969fe53bFA67074aDFa8F3C',
@@ -400,7 +396,6 @@ export const networkConfig: networkConfig = {
       NOTE_ACCOUNT_BLOCK: 16257996,
       ENCRYPTED_NOTES_BLOCK: 16257996,
     },
-    'tornado-proxy-light.contract.tornadocash.eth': '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
   },
   netId10: {
     rpcCallRetryAttempt: 15,
@@ -421,7 +416,7 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Optimism',
     deployedBlock: 2243689,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
     ovmGasPriceOracleContract: '0x420000000000000000000000000000000000000F',
@@ -436,7 +431,7 @@ export const networkConfig: networkConfig = {
         url: 'https://tornadocash-rpc.com/op',
       },
       chainnodes: {
-        name: 'Tornado RPC',
+        name: 'Chainnodes RPC',
         url: 'https://optimism-mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607',
       },
       optimism: {
@@ -470,7 +465,6 @@ export const networkConfig: networkConfig = {
       NOTE_ACCOUNT_BLOCK: 2243694,
       ENCRYPTED_NOTES_BLOCK: 2243694,
     },
-    'tornado-proxy-light.contract.tornadocash.eth': '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
   },
   netId42161: {
     rpcCallRetryAttempt: 15,
@@ -491,7 +485,7 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Arbitrum One',
     deployedBlock: 3430648,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
     tornadoSubgraph: 'tornadocash/arbitrum-tornado-subgraph',
@@ -505,7 +499,7 @@ export const networkConfig: networkConfig = {
         url: 'https://tornadocash-rpc.com/arbitrum',
       },
       chainnodes: {
-        name: 'Tornado RPC',
+        name: 'Chainnodes RPC',
         url: 'https://arbitrum-one.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607',
       },
       arbitrum: {
@@ -539,7 +533,6 @@ export const networkConfig: networkConfig = {
       NOTE_ACCOUNT_BLOCK: 3430605,
       ENCRYPTED_NOTES_BLOCK: 3430605,
     },
-    'tornado-proxy-light.contract.tornadocash.eth': '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
   },
   netId100: {
     rpcCallRetryAttempt: 15,
@@ -560,7 +553,7 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Gnosis Chain',
     deployedBlock: 17754561,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
     tornadoSubgraph: 'tornadocash/xdai-tornado-subgraph',
@@ -574,7 +567,7 @@ export const networkConfig: networkConfig = {
         url: 'https://tornadocash-rpc.com/gnosis',
       },
       chainnodes: {
-        name: 'Tornado RPC',
+        name: 'Chainnodes RPC',
         url: 'https://gnosis-mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607',
       },
       gnosis: {
@@ -608,7 +601,6 @@ export const networkConfig: networkConfig = {
       NOTE_ACCOUNT_BLOCK: 17754564,
       ENCRYPTED_NOTES_BLOCK: 17754564,
     },
-    'tornado-proxy-light.contract.tornadocash.eth': '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
   },
   netId43114: {
     rpcCallRetryAttempt: 15,
@@ -629,7 +621,7 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Avalanche Mainnet',
     deployedBlock: 4429818,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
     tornadoSubgraph: 'tornadocash/avalanche-tornado-subgraph',
@@ -667,7 +659,6 @@ export const networkConfig: networkConfig = {
       NOTE_ACCOUNT_BLOCK: 4429813,
       ENCRYPTED_NOTES_BLOCK: 4429813,
     },
-    'tornado-proxy-light.contract.tornadocash.eth': '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
   },
   netId11155111: {
     rpcCallRetryAttempt: 15,
@@ -688,8 +679,11 @@ export const networkConfig: networkConfig = {
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Ethereum Sepolia',
     deployedBlock: 5594395,
-    multicall: '0xcA11bde05977b3631167028862bE2a173976CA11',
+    multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     routerContract: '0x1572AFE6949fdF51Cb3E0856216670ae9Ee160Ee',
+    tornContract: '0x3AE6667167C0f44394106E197904519D808323cA',
+    governanceContract: '0xe5324cD7602eeb387418e594B87aCADee08aeCAD',
+    stakingRewardsContract: '0x6d0018890751Efd31feb8166711B16732E2b496b',
     registryContract: '0x1428e5d2356b13778A13108b10c440C83011dfB8',
     echoContract: '0xcDD1fc3F5ac2782D83449d3AbE80D6b7B273B0e5',
     aggregatorContract: '0x4088712AC9fad39ea133cdb9130E465d235e9642',
@@ -745,9 +739,6 @@ export const networkConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 5594395,
       MINING_BLOCK_TIME: 15,
     },
-    'torn.contract.tornadocash.eth': '0x3AE6667167C0f44394106E197904519D808323cA',
-    'governance.contract.tornadocash.eth': '0xe5324cD7602eeb387418e594B87aCADee08aeCAD',
-    'tornado-router.contract.tornadocash.eth': '0x1572AFE6949fdF51Cb3E0856216670ae9Ee160Ee',
   },
 };
 

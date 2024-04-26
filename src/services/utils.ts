@@ -1,4 +1,3 @@
-import { URL } from 'url';
 import { webcrypto } from 'crypto';
 import BN from 'bn.js';
 import type { BigNumberish } from 'ethers';

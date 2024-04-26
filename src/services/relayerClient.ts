@@ -1,4 +1,4 @@
-import { namehash, parseEther } from 'ethers';
+import { getAddress, namehash, parseEther } from 'ethers';
 import type { Aggregator } from '@tornado/contracts';
 import type { RelayerStructOutput } from '@tornado/contracts/dist/contracts/Governance/Aggregator/Aggregator';
 import { sleep } from './utils';
@@ -17,19 +17,21 @@ export interface RelayerParams {
 export interface Relayer {
   netId: number;
   url: string;
+  hostname: string;
   rewardAccount: string;
+  instances: string[];
+  gasPrice?: number;
+  ethPrices?: {
+    [key in string]: string;
+  };
   currentQueue: number;
   tornadoServiceFee: number;
 }
 
 export type RelayerInfo = Relayer & {
-  hostname: string;
   ensName: string;
   stakeBalance: bigint;
   relayerAddress: string;
-  ethPrices?: {
-    [key in string]: string;
-  };
 };
 
 export type RelayerError = {
@@ -137,6 +139,24 @@ export function getWeightRandom(weightsScores: bigint[], random: bigint) {
     random = random - weightsScores[i];
   }
   return Math.floor(Math.random() * weightsScores.length);
+}
+
+export type RelayerInstanceList = {
+  [key in string]: {
+    instanceAddress: {
+      [key in string]: string;
+    };
+  };
+};
+
+export function getSupportedInstances(instanceList: RelayerInstanceList) {
+  const rawList = Object.values(instanceList)
+    .map(({ instanceAddress }) => {
+      return Object.values(instanceAddress);
+    })
+    .flat();
+
+  return rawList.map((l) => getAddress(l));
 }
 
 export function pickWeightedRandomRelayer(relayers: RelayerInfo[], netId: string | number) {
@@ -263,7 +283,9 @@ export class RelayerClient {
           ensName,
           stakeBalance,
           relayerAddress,
-          rewardAccount: status.rewardAccount,
+          rewardAccount: getAddress(status.rewardAccount),
+          instances: getSupportedInstances(status.instances),
+          gasPrice: status.gasPrices?.fast,
           ethPrices: status.ethPrices,
           currentQueue: status.currentQueue,
           tornadoServiceFee: status.tornadoServiceFee,

@@ -29,6 +29,7 @@ import {
   MaxUint256,
   Transaction,
   BigNumberish,
+  getAddress,
 } from 'ethers';
 import type MerkleTree from '@tornado/fixed-merkle-tree';
 import * as packageJson from '../package.json';
@@ -80,6 +81,7 @@ import {
   substring,
   NoteAccount,
   parseRecoveryKey,
+  getSupportedInstances,
 } from './services';
 
 const DEFAULT_GAS_LIMIT = 600_000;
@@ -327,7 +329,11 @@ export async function getProgramRelayer({
         relayerClient.selectedRelayer = {
           netId: relayerStatus.netId,
           url: relayerStatus.url,
-          rewardAccount: relayerStatus.rewardAccount,
+          hostname: new URL(relayerStatus.url).hostname,
+          rewardAccount: getAddress(relayerStatus.rewardAccount),
+          instances: getSupportedInstances(relayerStatus.instances),
+          gasPrice: relayerStatus.gasPrices?.fast,
+          ethPrices: relayerStatus.ethPrices,
           currentQueue: relayerStatus.currentQueue,
           tornadoServiceFee: relayerStatus.tornadoServiceFee,
         };
@@ -343,13 +349,7 @@ export async function getProgramRelayer({
       const relayerStatus = validRelayers[0];
 
       if (relayerStatus) {
-        relayerClient.selectedRelayer = {
-          netId: relayerStatus.netId,
-          url: relayerStatus.url,
-          rewardAccount: relayerStatus.rewardAccount,
-          currentQueue: relayerStatus.currentQueue,
-          tornadoServiceFee: relayerStatus.tornadoServiceFee,
-        };
+        relayerClient.selectedRelayer = relayerStatus;
       }
 
       return {
@@ -370,13 +370,7 @@ export async function getProgramRelayer({
   const relayerStatus = relayerClient.pickWeightedRandomRelayer(validRelayers);
 
   if (relayerStatus) {
-    relayerClient.selectedRelayer = {
-      netId: relayerStatus.netId,
-      url: relayerStatus.url,
-      rewardAccount: relayerStatus.rewardAccount,
-      currentQueue: relayerStatus.currentQueue,
-      tornadoServiceFee: relayerStatus.tornadoServiceFee,
-    };
+    relayerClient.selectedRelayer = relayerStatus;
   }
 
   return {
@@ -529,7 +523,7 @@ export function tornadoProgram() {
       const config = networkConfig[`netId${netId}`];
 
       const {
-        multicall: multicallAddress,
+        multicallContract,
         routerContract,
         echoContract,
         nativeCurrency,
@@ -569,7 +563,7 @@ export function tornadoProgram() {
       }
 
       const TornadoProxy = TornadoRouter__factory.connect(routerContract, signer);
-      const Multicall = Multicall__factory.connect(multicallAddress, provider);
+      const Multicall = Multicall__factory.connect(multicallContract, provider);
       const Token = tokenAddress ? ERC20__factory.connect(tokenAddress, signer) : undefined;
 
       const [ethBalance, tokenBalance, tokenApprovals] = await multicall(Multicall, [
@@ -674,7 +668,7 @@ export function tornadoProgram() {
       const config = networkConfig[`netId${netId}`];
 
       const {
-        multicall: multicallAddress,
+        multicallContract,
         routerContract,
         nativeCurrency,
         tokens: { [currency]: currencyConfig },
@@ -705,7 +699,7 @@ export function tornadoProgram() {
       }
 
       const TornadoProxy = TornadoRouter__factory.connect(routerContract, signer);
-      const Multicall = Multicall__factory.connect(multicallAddress, provider);
+      const Multicall = Multicall__factory.connect(multicallContract, provider);
       const Token = tokenAddress ? ERC20__factory.connect(tokenAddress, signer) : undefined;
 
       const [ethBalance, tokenBalance, tokenApprovals] = await multicall(Multicall, [
@@ -792,8 +786,8 @@ export function tornadoProgram() {
           tornadoSubgraph,
           deployedBlock,
           nativeCurrency,
+          multicallContract,
           routerContract,
-          multicall: multicallAddress,
           ovmGasPriceOracleContract,
           tokens: { [currency]: currencyConfig },
         } = config;
@@ -829,7 +823,7 @@ export function tornadoProgram() {
 
         const Tornado = Tornado__factory.connect(instanceAddress, provider);
         const TornadoProxy = TornadoRouter__factory.connect(routerContract, !walletWithdrawal ? provider : signer);
-        const Multicall = Multicall__factory.connect(multicallAddress, provider);
+        const Multicall = Multicall__factory.connect(multicallContract, provider);
 
         const tornadoFeeOracle = new TornadoFeeOracle(
           ovmGasPriceOracleContract
@@ -1263,7 +1257,7 @@ export function tornadoProgram() {
     });
 
   program
-    .command('syncEvents')
+    .command('updateEvents')
     .description('Sync the local cache file of tornado cash events.\n\n')
     .argument('[netId]', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
     .argument('[currency]', 'Currency to sync events')
@@ -1287,7 +1281,7 @@ export function tornadoProgram() {
             routerContract,
             echoContract,
             registryContract,
-            ['governance.contract.tornadocash.eth']: governanceContract,
+            governanceContract,
             deployedBlock,
             constants: { GOVERNANCE_BLOCK, REGISTRY_BLOCK, NOTE_ACCOUNT_BLOCK, ENCRYPTED_NOTES_BLOCK },
           } = config;
@@ -1439,6 +1433,8 @@ export function tornadoProgram() {
 
       const validRelayers = allRelayers.validRelayers as RelayerInfo[];
       const invalidRelayers = allRelayers.invalidRelayers as RelayerError[];
+
+      console.log(validRelayers);
 
       const relayersTable = new Table();
 
@@ -1699,7 +1695,7 @@ export function tornadoProgram() {
 
         const config = networkConfig[`netId${netId}`];
 
-        const { currencyName, multicall: multicallAddress } = config;
+        const { currencyName, multicallContract } = config;
 
         const provider = getProgramProvider(netId, rpc, config, {
           ...fetchDataOptions,
@@ -1715,7 +1711,7 @@ export function tornadoProgram() {
 
         const tokenAddress = tokenArgs ? parseAddress(tokenArgs) : tokenOpts;
 
-        const Multicall = Multicall__factory.connect(multicallAddress, provider);
+        const Multicall = Multicall__factory.connect(multicallContract, provider);
         const Token = (tokenAddress ? ERC20__factory.connect(tokenAddress, signer) : undefined) as ERC20;
 
         // Fetching feeData or nonce is unnecessary however we do this to estimate transfer amounts
@@ -1775,6 +1771,11 @@ export function tornadoProgram() {
             const initCost = txGasPrice * BigInt('400000');
             toSend = ethBalance - initCost;
 
+            if (ethBalance === BigInt(0) || ethBalance < initCost) {
+              const errMsg = `Invalid ${currencyName} balance, wants ${formatEther(initCost)} have ${formatEther(ethBalance)}`;
+              throw new Error(errMsg);
+            }
+
             const estimatedGas = await provider.estimateGas({
               type: txType,
               from: signer.address,
@@ -1830,12 +1831,7 @@ export function tornadoProgram() {
 
         const config = networkConfig[`netId${netId}`];
 
-        const {
-          currencyName,
-          multicall: multicallAddress,
-          ['torn.contract.tornadocash.eth']: tornTokenAddress,
-          tokens,
-        } = config;
+        const { currencyName, multicallContract, tornContract, tokens } = config;
 
         const provider = getProgramProvider(netId, rpc, config, {
           ...fetchDataOptions,
@@ -1848,14 +1844,14 @@ export function tornadoProgram() {
           throw new Error('Address is required however no user address is supplied');
         }
 
-        const Multicall = Multicall__factory.connect(multicallAddress, provider);
+        const Multicall = Multicall__factory.connect(multicallContract, provider);
 
         const tokenAddresses = Object.values(tokens)
           .map(({ tokenAddress }) => tokenAddress)
           .filter((t) => t) as string[];
 
-        if (tornTokenAddress) {
-          tokenAddresses.push(tornTokenAddress);
+        if (tornContract) {
+          tokenAddresses.push(tornContract);
         }
 
         const tokenBalances = await getTokenBalances({

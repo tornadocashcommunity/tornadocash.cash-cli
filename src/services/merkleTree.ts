@@ -119,7 +119,7 @@ export class MerkleTreeService {
     );
 
     console.time('Created tree in');
-    const tree = await this.createTree(events.map(({ commitment }) => BigInt(commitment).toString()));
+    const tree = await this.createTree(events.map(({ commitment }) => commitment));
     console.timeEnd('Created tree in');
     console.log('');
 
