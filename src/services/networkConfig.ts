@@ -46,11 +46,7 @@ export type Config = {
   };
   nativeCurrency: string;
   currencyName: string;
-  explorerUrl: {
-    tx: string;
-    address: string;
-    block: string;
-  };
+  explorerUrl: string;
   merkleTreeHeight: number;
   emptyElement: string;
   networkName: string;
@@ -90,24 +86,6 @@ export type networkConfig = {
   [key in string]: Config;
 };
 
-export const blockSyncInterval = 10000;
-export const enabledChains = ['1', '10', '56', '100', '137', '42161', '43114', '11155111'];
-
-export function getInstanceByAddress({ netId, address }: { netId: number | string; address: string }) {
-  const { tokens } = networkConfig[`netId${netId}`];
-
-  for (const [currency, { instanceAddress }] of Object.entries(tokens)) {
-    for (const [amount, instance] of Object.entries(instanceAddress)) {
-      if (instance === address) {
-        return {
-          amount,
-          currency,
-        };
-      }
-    }
-  }
-}
-
 const theGraph = {
   name: 'Hosted Graph',
   url: 'https://api.thegraph.com',
@@ -117,7 +95,7 @@ const tornado = {
   url: 'https://tornadocash-rpc.com',
 };
 
-export const networkConfig: networkConfig = {
+export const defaultConfig: networkConfig = {
   netId1: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
@@ -128,11 +106,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'eth',
     currencyName: 'ETH',
-    explorerUrl: {
-      tx: 'https://etherscan.io/tx/',
-      address: 'https://etherscan.io/address/',
-      block: 'https://etherscan.io/block/',
-    },
+    explorerUrl: 'https://etherscan.io',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Ethereum Mainnet',
@@ -278,11 +252,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'bnb',
     currencyName: 'BNB',
-    explorerUrl: {
-      tx: 'https://bscscan.com/tx/',
-      address: 'https://bscscan.com/address/',
-      block: 'https://bscscan.com/block/',
-    },
+    explorerUrl: 'https://bscscan.com',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Binance Smart Chain',
@@ -346,11 +316,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'matic',
     currencyName: 'MATIC',
-    explorerUrl: {
-      tx: 'https://polygonscan.com/tx/',
-      address: 'https://polygonscan.com/address/',
-      block: 'https://polygonscan.com/block/',
-    },
+    explorerUrl: 'https://polygonscan.com',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Polygon (Matic) Network',
@@ -407,11 +373,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'eth',
     currencyName: 'ETH',
-    explorerUrl: {
-      tx: 'https://optimistic.etherscan.io/tx/',
-      address: 'https://optimistic.etherscan.io/address/',
-      block: 'https://optimistic.etherscan.io/block/',
-    },
+    explorerUrl: 'https://optimistic.etherscan.io',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Optimism',
@@ -476,11 +438,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'eth',
     currencyName: 'ETH',
-    explorerUrl: {
-      tx: 'https://arbiscan.io/tx/',
-      address: 'https://arbiscan.io/address/',
-      block: 'https://arbiscan.io/block/',
-    },
+    explorerUrl: 'https://arbiscan.io',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Arbitrum One',
@@ -544,11 +502,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'xdai',
     currencyName: 'xDAI',
-    explorerUrl: {
-      tx: 'https://blockscout.com/xdai/mainnet/tx/',
-      address: 'https://blockscout.com/xdai/mainnet/address/',
-      block: 'https://blockscout.com/xdai/mainnet/block/',
-    },
+    explorerUrl: 'https://gnosisscan.io',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Gnosis Chain',
@@ -612,11 +566,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'avax',
     currencyName: 'AVAX',
-    explorerUrl: {
-      tx: 'https://snowtrace.io/tx/',
-      address: 'https://snowtrace.io/address/',
-      block: 'https://snowtrace.io/block/',
-    },
+    explorerUrl: 'https://snowtrace.io',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Avalanche Mainnet',
@@ -670,11 +620,7 @@ export const networkConfig: networkConfig = {
     },
     nativeCurrency: 'eth',
     currencyName: 'SepoliaETH',
-    explorerUrl: {
-      tx: 'https://sepolia.etherscan.io/tx/',
-      address: 'https://sepolia.etherscan.io/address/',
-      block: 'https://sepolia.etherscan.io/block/',
-    },
+    explorerUrl: 'https://sepolia.etherscan.io',
     merkleTreeHeight: 20,
     emptyElement: '21663839004416932945382355908790599225266501822907911457504978515578255421292',
     networkName: 'Ethereum Sepolia',
@@ -742,6 +688,77 @@ export const networkConfig: networkConfig = {
   },
 };
 
-export const subdomains = enabledChains.map((chain) => networkConfig[`netId${chain}`].ensSubdomainKey);
+export const enabledChains = ['1', '10', '56', '100', '137', '42161', '43114', '11155111'];
 
-export default networkConfig;
+/**
+ * Custom config object to extend default config
+ * 
+ * Inspired by getUrlFunc from ethers.js
+ * https://github.com/ethers-io/ethers.js/blob/v6/src.ts/utils/fetch.ts#L59
+ */
+export let customConfig: networkConfig = {};
+
+/**
+ * Add or override existing network config object
+ * 
+ * Could be also called on the UI hook so that the UI could allow people to use privacy pools that it hasn't deployed
+ */
+export function addNetwork(newConfig: networkConfig) {
+  enabledChains.push(
+    ...Object.keys(newConfig)
+      .map((netId) => netId.replace('netId', ''))
+      .filter((netId) => !enabledChains.includes(netId)),
+  );
+
+  customConfig = {
+    ...customConfig,
+    ...newConfig,
+  };
+}
+
+export function getNetworkConfig(): networkConfig {
+  // customConfig object
+  const allConfig = {
+    ...defaultConfig,
+    ...customConfig,
+  };
+
+  return enabledChains.reduce((acc, curr) => {
+    acc[`netId${curr}`] = allConfig[`netId${curr}`];
+    return acc;
+  }, {} as networkConfig);
+}
+
+export function getConfig(netId: string | number) {
+  const allConfig = getNetworkConfig();
+
+  const chainConfig = allConfig[`netId${netId}`];
+
+  if (!chainConfig) {
+    const errMsg = `No config found for ${netId}!`;
+    throw new Error(errMsg);
+  }
+
+  return chainConfig;
+}
+
+export function getInstanceByAddress({ netId, address }: { netId: number | string; address: string }) {
+  const { tokens } = getConfig(netId);
+
+  for (const [currency, { instanceAddress }] of Object.entries(tokens)) {
+    for (const [amount, instance] of Object.entries(instanceAddress)) {
+      if (instance === address) {
+        return {
+          amount,
+          currency,
+        };
+      }
+    }
+  }
+}
+
+export function getSubdomains() {
+  const allConfig = getNetworkConfig();
+
+  return enabledChains.map((chain) => allConfig[`netId${chain}`].ensSubdomainKey);
+}

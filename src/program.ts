@@ -73,9 +73,9 @@ import {
   Invoice,
   fetchData,
   fetchDataOptions,
-  networkConfig,
   getInstanceByAddress,
-  subdomains,
+  getSubdomains,
+  getConfig,
   Config,
   enabledChains,
   substring,
@@ -92,7 +92,6 @@ const TOKEN_PRICE_ORACLE = '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8';
 // Where cached events, trees, circuits, and key is saved
 const STATIC_DIR = process.env.CACHE_DIR || path.join(__dirname, '../static');
 const EVENTS_DIR = path.join(STATIC_DIR, './events');
-const TREES_DIR = path.join(STATIC_DIR, './trees');
 const MERKLE_WORKER_PATH =
   process.env.DISABLE_MERKLE_WORKER === 'true' ? undefined : path.join(STATIC_DIR, './merkleTreeWorker.js');
 
@@ -279,9 +278,11 @@ export async function getProgramRelayer({
 }> {
   const { ethRpc, ethGraph, relayer, disableGraph } = options;
 
-  const netConfig = networkConfig[`netId${netId}`];
+  const netConfig = getConfig(netId);
 
-  const ethConfig = networkConfig[`netId${RELAYER_NETWORK}`];
+  const ethConfig = getConfig('1');
+
+  const subdomains = getSubdomains();
 
   const {
     aggregatorContract,
@@ -460,7 +461,7 @@ export function tornadoProgram() {
     .action(async (netId: string | number, currency: string, amount: string) => {
       currency = currency.toLowerCase();
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const {
         routerContract,
@@ -522,7 +523,7 @@ export function tornadoProgram() {
       currency = currency.toLowerCase();
       const { rpc, accountKey } = options;
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const {
         multicallContract,
@@ -667,7 +668,7 @@ export function tornadoProgram() {
 
       const { currency, amount, netId, commitment } = new Invoice(invoiceString);
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const {
         multicallContract,
@@ -782,7 +783,7 @@ export function tornadoProgram() {
 
         const { netId, currency, amount, commitmentHex, nullifierHex, nullifier, secret } = deposit;
 
-        const config = networkConfig[`netId${netId}`];
+        const config = getConfig(netId);
 
         const {
           tornadoSubgraph,
@@ -1142,7 +1143,7 @@ export function tornadoProgram() {
       const deposit = await Deposit.parseNote(note);
       const { netId, currency, amount, commitmentHex, nullifierHex } = deposit;
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const {
         tornadoSubgraph,
@@ -1275,7 +1276,7 @@ export function tornadoProgram() {
         const networks = netIdOpts ? [netIdOpts] : enabledChains;
 
         for (const netId of networks) {
-          const config = networkConfig[`netId${netId}`];
+          const config = getConfig(netId);
           const {
             tornadoSubgraph,
             registrySubgraph,
@@ -1508,7 +1509,7 @@ export function tornadoProgram() {
       const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
       const { rpc } = options;
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const {
         echoContract,
@@ -1628,7 +1629,7 @@ export function tornadoProgram() {
         accountKey = options.accountKey;
       }
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const {
         routerContract,
@@ -1707,7 +1708,7 @@ export function tornadoProgram() {
         const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
         const { rpc, token: tokenOpts } = options;
 
-        const config = networkConfig[`netId${netId}`];
+        const config = getConfig(netId);
 
         const { currencyName, multicallContract } = config;
 
@@ -1843,7 +1844,7 @@ export function tornadoProgram() {
         const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
         const { rpc, token: tokenOpts } = options;
 
-        const config = networkConfig[`netId${netId}`];
+        const config = getConfig(netId);
 
         const { currencyName, multicallContract, tornContract, tokens } = config;
 
@@ -1903,7 +1904,7 @@ export function tornadoProgram() {
 
       const netId = Number(deserializedTx.chainId);
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const provider = getProgramProvider(netId, rpc, config, {
         ...fetchDataOptions,
@@ -1938,7 +1939,7 @@ export function tornadoProgram() {
         throw new Error('NetId for the transaction is invalid, this command only supports EIP-155 transactions');
       }
 
-      const config = networkConfig[`netId${netId}`];
+      const config = getConfig(netId);
 
       const provider = getProgramProvider(netId, rpc, config, {
         ...fetchDataOptions,
