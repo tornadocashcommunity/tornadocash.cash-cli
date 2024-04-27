@@ -1,5 +1,5 @@
 import { Worker as NodeWorker } from 'worker_threads';
-import { MerkleTree, Element } from '@tornado/fixed-merkle-tree';
+import { MerkleTree, PartialMerkleTree, Element, TreeEdge } from '@tornado/fixed-merkle-tree';
 import type { Tornado } from '@tornado/contracts';
 import { isNode, toFixedHex } from './utils';
 import { mimc } from './mimc';
@@ -108,6 +108,69 @@ export class MerkleTreeService {
     }
 
     return new MerkleTree(this.merkleTreeHeight, events, {
+      zeroElement: this.emptyElement,
+      hashFunction,
+    });
+  }
+
+  async createPartialTree({ edge, elements }: { edge: TreeEdge; elements: Element[] }) {
+    const { hash: hashFunction } = await mimc.getHash();
+
+    if (this.merkleWorkerPath) {
+      console.log('Using merkleWorker\n');
+
+      try {
+        if (isNode) {
+          const merkleWorkerPromise = new Promise((resolve, reject) => {
+            const worker = new NodeWorker(this.merkleWorkerPath as string, {
+              workerData: {
+                merkleTreeHeight: this.merkleTreeHeight,
+                edge,
+                elements,
+                zeroElement: this.emptyElement,
+              },
+            });
+            worker.on('message', resolve);
+            worker.on('error', reject);
+            worker.on('exit', (code) => {
+              if (code !== 0) {
+                reject(new Error(`Worker stopped with exit code ${code}`));
+              }
+            });
+          }) as Promise<string>;
+
+          return PartialMerkleTree.deserialize(JSON.parse(await merkleWorkerPromise), hashFunction);
+        } else {
+          const merkleWorkerPromise = new Promise((resolve, reject) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const worker = new (Worker as any)(this.merkleWorkerPath);
+
+            worker.onmessage = (e: { data: string }) => {
+              resolve(e.data);
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            worker.onerror = (e: any) => {
+              reject(e);
+            };
+
+            worker.postMessage({
+              merkleTreeHeight: this.merkleTreeHeight,
+              edge,
+              elements,
+              zeroElement: this.emptyElement,
+            });
+          }) as Promise<string>;
+
+          return PartialMerkleTree.deserialize(JSON.parse(await merkleWorkerPromise), hashFunction);
+        }
+      } catch (err) {
+        console.log('merkleWorker failed, falling back to synchronous merkle tree');
+        console.log(err);
+      }
+    }
+
+    return new PartialMerkleTree(this.merkleTreeHeight, edge, elements, {
       zeroElement: this.emptyElement,
       hashFunction,
     });

@@ -82,6 +82,7 @@ import {
   NoteAccount,
   parseRecoveryKey,
   getSupportedInstances,
+  TreeCache,
 } from './services';
 
 const DEFAULT_GAS_LIMIT = 600_000;
@@ -98,6 +99,7 @@ const MERKLE_WORKER_PATH =
 // Where we should backup notes and save events
 const USER_DIR = process.env.USER_DIR || '.';
 const SAVED_DIR = path.join(USER_DIR, './events');
+const SAVED_TREE_DIR = path.join(USER_DIR, './trees');
 
 const CIRCUIT_PATH = path.join(__dirname, '../static/tornado.json');
 const KEY_PATH = path.join(__dirname, '../static/tornadoProvingKey.bin');
@@ -1278,6 +1280,7 @@ export function tornadoProgram() {
             tornadoSubgraph,
             registrySubgraph,
             tokens,
+            nativeCurrency,
             routerContract,
             echoContract,
             registryContract,
@@ -1396,20 +1399,31 @@ export function tornadoProgram() {
                 merkleWorkerPath: MERKLE_WORKER_PATH,
               });
 
-              const depositEvents = (await depositsService.updateEvents()).events;
+              const treeCache = new TreeCache({
+                netId,
+                amount,
+                currency,
+                userDirectory: SAVED_TREE_DIR,
+              });
+
+              const depositEvents = (await depositsService.updateEvents()).events as DepositsEvents[];
 
               // If we have MERKLE_WORKER_PATH run worker at background otherwise resolve it here
               const depositTreePromise = await (async () => {
                 if (MERKLE_WORKER_PATH) {
-                  return () => merkleTreeService.verifyTree(depositEvents as DepositsEvents[]) as Promise<MerkleTree>;
+                  return () => merkleTreeService.verifyTree(depositEvents) as Promise<MerkleTree>;
                 }
-                return (await merkleTreeService.verifyTree(depositEvents as DepositsEvents[])) as MerkleTree;
+                return (await merkleTreeService.verifyTree(depositEvents)) as MerkleTree;
               })();
 
-              await Promise.all([
-                withdrawalsService.updateEvents(),
+              const [tree] = await Promise.all([
                 typeof depositTreePromise === 'function' ? depositTreePromise() : depositTreePromise,
+                withdrawalsService.updateEvents(),
               ]);
+
+              if (nativeCurrency === currency) {
+                await treeCache.createTree(depositEvents, tree);
+              }
             }
           }
         }

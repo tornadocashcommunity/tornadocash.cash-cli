@@ -1,7 +1,7 @@
 import Table from 'cli-table3';
 import moment from 'moment';
 import { BatchBlockOnProgress, BatchEventOnProgress } from '../batch';
-import { saveEvents, loadSavedEvents, loadCachedEvents } from '../data';
+import { saveUserFile, loadSavedEvents, loadCachedEvents } from '../data';
 import {
   BaseDepositsService,
   BaseEncryptedNotesService,
@@ -184,10 +184,10 @@ export class NodeDepositsService extends BaseDepositsService {
     console.log(eventTable.toString() + '\n');
 
     if (this.userDirectory) {
-      await saveEvents<DepositsEvents | WithdrawalsEvents>({
-        name: instanceName,
+      await saveUserFile({
+        fileName: instanceName + '.json',
         userDirectory: this.userDirectory,
-        events,
+        dataString: JSON.stringify(events, null, 2) + '\n',
       });
     }
   }
@@ -329,10 +329,10 @@ export class NodeEchoService extends BaseEchoService {
     console.log(eventTable.toString() + '\n');
 
     if (this.userDirectory) {
-      await saveEvents<EchoEvents>({
-        name: instanceName,
+      await saveUserFile({
+        fileName: instanceName + '.json',
         userDirectory: this.userDirectory,
-        events,
+        dataString: JSON.stringify(events, null, 2) + '\n',
       });
     }
   }
@@ -474,10 +474,10 @@ export class NodeEncryptedNotesService extends BaseEncryptedNotesService {
     console.log(eventTable.toString() + '\n');
 
     if (this.userDirectory) {
-      await saveEvents<EncryptedNotesEvents>({
-        name: instanceName,
+      await saveUserFile({
+        fileName: instanceName + '.json',
         userDirectory: this.userDirectory,
-        events,
+        dataString: JSON.stringify(events, null, 2) + '\n',
       });
     }
   }
@@ -625,10 +625,10 @@ export class NodeGovernanceService extends BaseGovernanceService {
     console.log(eventTable.toString() + '\n');
 
     if (this.userDirectory) {
-      await saveEvents<BaseGovernanceEventTypes>({
-        name: instanceName,
+      await saveUserFile({
+        fileName: instanceName + '.json',
         userDirectory: this.userDirectory,
-        events,
+        dataString: JSON.stringify(events, null, 2) + '\n',
       });
     }
   }
@@ -770,10 +770,10 @@ export class NodeRegistryService extends BaseRegistryService {
     console.log(eventTable.toString() + '\n');
 
     if (this.userDirectory) {
-      await saveEvents<RegistersEvents>({
-        name: instanceName,
+      await saveUserFile({
+        fileName: instanceName + '.json',
         userDirectory: this.userDirectory,
-        events,
+        dataString: JSON.stringify(events, null, 2) + '\n',
       });
     }
   }

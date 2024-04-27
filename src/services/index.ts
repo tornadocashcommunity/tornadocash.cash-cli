@@ -16,5 +16,6 @@ export * from './prices';
 export * from './providers';
 export * from './relayerClient';
 export * from './tokens';
+export * from './treeCache';
 export * from './utils';
 export * from './websnark';

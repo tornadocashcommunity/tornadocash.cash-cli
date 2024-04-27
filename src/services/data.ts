@@ -37,22 +37,21 @@ export function unzipAsync(data: Uint8Array): Promise<Unzipped> {
   });
 }
 
-export async function saveEvents<T extends MinimalEvents>({
-  name,
+export async function saveUserFile({
+  fileName,
   userDirectory,
-  events,
+  dataString,
 }: {
-  name: string;
+  fileName: string;
   userDirectory: string;
-  events: T[];
+  dataString: string;
 }) {
-  const fileName = `${name}.json`.toLowerCase();
+  fileName = fileName.toLowerCase();
+
   const filePath = path.join(userDirectory, fileName);
 
-  const stringEvents = JSON.stringify(events, null, 2) + '\n';
-
   const payload = await zipAsync({
-    [fileName]: new TextEncoder().encode(stringEvents),
+    [fileName]: new TextEncoder().encode(dataString),
   });
 
   if (!(await existsAsync(userDirectory))) {
@@ -60,7 +59,7 @@ export async function saveEvents<T extends MinimalEvents>({
   }
 
   await writeFile(filePath + '.zip', payload);
-  await writeFile(filePath, stringEvents);
+  await writeFile(filePath, dataString);
 }
 
 export async function loadSavedEvents<T extends MinimalEvents>({
