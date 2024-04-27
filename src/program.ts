@@ -85,9 +85,9 @@ import {
   TreeCache,
 } from './services';
 
-const DEFAULT_GAS_LIMIT = 600_000;
-const RELAYER_NETWORK = 1;
-const TOKEN_PRICE_ORACLE = '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8';
+const DEFAULT_GAS_LIMIT = Number(process.env.DEFAULT_GAS_LIMIT) || 600_000;
+
+const RELAYER_NETWORK = Number(process.env.RELAYER_NETWORK) || 1;
 
 // Where cached events, trees, circuits, and key is saved
 const STATIC_DIR = process.env.CACHE_DIR || path.join(__dirname, '../static');
@@ -280,7 +280,7 @@ export async function getProgramRelayer({
 
   const netConfig = getConfig(netId);
 
-  const ethConfig = getConfig('1');
+  const ethConfig = getConfig(RELAYER_NETWORK);
 
   const subdomains = getSubdomains();
 
@@ -291,7 +291,7 @@ export async function getProgramRelayer({
     constants: { REGISTRY_BLOCK },
   } = ethConfig;
 
-  const provider = getProgramProvider(1, ethRpc, ethConfig, {
+  const provider = getProgramProvider(RELAYER_NETWORK, ethRpc, ethConfig, {
     ...fetchDataOptions,
   });
 
@@ -791,6 +791,7 @@ export function tornadoProgram() {
           nativeCurrency,
           multicallContract,
           routerContract,
+          offchainOracleContract,
           ovmGasPriceOracleContract,
           tokens: { [currency]: currencyConfig },
         } = config;
@@ -833,10 +834,11 @@ export function tornadoProgram() {
             ? OvmGasPriceOracle__factory.connect(ovmGasPriceOracleContract, provider)
             : undefined,
         );
+
         const tokenPriceOracle = new TokenPriceOracle(
           provider,
           Multicall,
-          OffchainOracle__factory.connect(TOKEN_PRICE_ORACLE, provider),
+          offchainOracleContract ? OffchainOracle__factory.connect(offchainOracleContract, provider) : undefined,
         );
 
         const depositsServiceConstructor = {

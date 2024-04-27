@@ -54,11 +54,12 @@ export type Config = {
   rpcUrls: RpcUrls;
   multicallContract: string;
   routerContract: string;
+  echoContract: string;
+  offchainOracleContract?: string;
   tornContract?: string;
   governanceContract?: string;
   stakingRewardsContract?: string;
   registryContract?: string;
-  echoContract: string;
   aggregatorContract?: string;
   reverseRecordsContract?: string;
   gasPriceOracleContract?: string;
@@ -147,11 +148,12 @@ export const defaultConfig: networkConfig = {
     },
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     routerContract: '0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b',
+    echoContract: '0x9B27DD5Bb15d42DC224FCD0B7caEbBe16161Df42',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     tornContract: '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C',
     governanceContract: '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce',
     stakingRewardsContract: '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29',
     registryContract: '0x58E8dCC13BE9780fC42E8723D8EaD4CF46943dF2',
-    echoContract: '0x9B27DD5Bb15d42DC224FCD0B7caEbBe16161Df42',
     aggregatorContract: '0xE8F47A78A6D52D317D0D2FFFac56739fE14D1b49',
     reverseRecordsContract: '0x3671aE578E63FdF66ad4F3E12CC0c0d71Ac7510C',
     tornadoSubgraph: 'tornadocash/mainnet-tornado-subgraph',
@@ -258,8 +260,9 @@ export const defaultConfig: networkConfig = {
     networkName: 'Binance Smart Chain',
     deployedBlock: 8158799,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
-    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     tornadoSubgraph: 'tornadocash/bsc-tornado-subgraph',
     subgraphs: {
       tornado,
@@ -322,8 +325,9 @@ export const defaultConfig: networkConfig = {
     networkName: 'Polygon (Matic) Network',
     deployedBlock: 16257962,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
-    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     gasPriceOracleContract: '0xF81A8D8D3581985D3969fe53bFA67074aDFa8F3C',
     tornadoSubgraph: 'tornadocash/matic-tornado-subgraph',
     subgraphs: {
@@ -379,8 +383,9 @@ export const defaultConfig: networkConfig = {
     networkName: 'Optimism',
     deployedBlock: 2243689,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
-    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     ovmGasPriceOracleContract: '0x420000000000000000000000000000000000000F',
     tornadoSubgraph: 'tornadocash/optimism-tornado-subgraph',
     subgraphs: {
@@ -444,8 +449,9 @@ export const defaultConfig: networkConfig = {
     networkName: 'Arbitrum One',
     deployedBlock: 3430648,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
-    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     tornadoSubgraph: 'tornadocash/arbitrum-tornado-subgraph',
     subgraphs: {
       tornado,
@@ -508,8 +514,9 @@ export const defaultConfig: networkConfig = {
     networkName: 'Gnosis Chain',
     deployedBlock: 17754561,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
-    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     tornadoSubgraph: 'tornadocash/xdai-tornado-subgraph',
     subgraphs: {
       tornado,
@@ -572,8 +579,9 @@ export const defaultConfig: networkConfig = {
     networkName: 'Avalanche Mainnet',
     deployedBlock: 4429818,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
-    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     routerContract: '0x0D5550d52428E7e3175bfc9550207e4ad3859b17',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
+    offchainOracleContract: '0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8',
     tornadoSubgraph: 'tornadocash/avalanche-tornado-subgraph',
     subgraphs: {
       theGraph,
@@ -627,11 +635,11 @@ export const defaultConfig: networkConfig = {
     deployedBlock: 5594395,
     multicallContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
     routerContract: '0x1572AFE6949fdF51Cb3E0856216670ae9Ee160Ee',
+    echoContract: '0xa75BF2815618872f155b7C4B0C81bF990f5245E4',
     tornContract: '0x3AE6667167C0f44394106E197904519D808323cA',
     governanceContract: '0xe5324cD7602eeb387418e594B87aCADee08aeCAD',
     stakingRewardsContract: '0x6d0018890751Efd31feb8166711B16732E2b496b',
     registryContract: '0x1428e5d2356b13778A13108b10c440C83011dfB8',
-    echoContract: '0xcDD1fc3F5ac2782D83449d3AbE80D6b7B273B0e5',
     aggregatorContract: '0x4088712AC9fad39ea133cdb9130E465d235e9642',
     reverseRecordsContract: '0xEc29700C0283e5Be64AcdFe8077d6cC95dE23C23',
     tornadoSubgraph: 'tornadocash/sepolia-tornado-subgraph',
@@ -692,7 +700,7 @@ export const enabledChains = ['1', '10', '56', '100', '137', '42161', '43114', '
 
 /**
  * Custom config object to extend default config
- * 
+ *
  * Inspired by getUrlFunc from ethers.js
  * https://github.com/ethers-io/ethers.js/blob/v6/src.ts/utils/fetch.ts#L59
  */
@@ -700,7 +708,7 @@ export let customConfig: networkConfig = {};
 
 /**
  * Add or override existing network config object
- * 
+ *
  * Could be also called on the UI hook so that the UI could allow people to use privacy pools that it hasn't deployed
  */
 export function addNetwork(newConfig: networkConfig) {
