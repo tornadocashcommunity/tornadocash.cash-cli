@@ -67,6 +67,7 @@ export type Config = {
   ovmGasPriceOracleContract?: string;
   tornadoSubgraph: string;
   registrySubgraph?: string;
+  governanceSubgraph?: string;
   subgraphs: SubgraphUrls;
   tokens: TokenInstances;
   optionalTokens?: string[];
@@ -158,6 +159,7 @@ export const defaultConfig: networkConfig = {
     reverseRecordsContract: '0x3671aE578E63FdF66ad4F3E12CC0c0d71Ac7510C',
     tornadoSubgraph: 'tornadocash/mainnet-tornado-subgraph',
     registrySubgraph: 'tornadocash/tornado-relayer-registry',
+    governanceSubgraph: 'tornadocash/tornado-governance',
     subgraphs: {
       tornado,
       theGraph,

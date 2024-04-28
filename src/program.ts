@@ -1282,6 +1282,7 @@ export function tornadoProgram() {
           const {
             tornadoSubgraph,
             registrySubgraph,
+            governanceSubgraph,
             tokens,
             nativeCurrency,
             routerContract,
@@ -1301,9 +1302,8 @@ export function tornadoProgram() {
             const governanceService = new NodeGovernanceService({
               netId,
               provider,
-              // to-do connect governance with subgraph
-              graphApi: '',
-              subgraphName: '',
+              graphApi,
+              subgraphName: governanceSubgraph,
               Governance: Governance__factory.connect(governanceContract, provider),
               deployedBlock: GOVERNANCE_BLOCK,
               fetchDataOptions,

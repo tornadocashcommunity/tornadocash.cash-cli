@@ -11,7 +11,6 @@ import {
   BaseEncryptedNotesServiceConstructor,
   BaseGovernanceServiceConstructor,
   BaseRegistryServiceConstructor,
-  BaseGovernanceEventTypes,
   BaseEchoServiceConstructor,
   BaseEchoService,
 } from './base';
@@ -21,6 +20,7 @@ import type {
   WithdrawalsEvents,
   EncryptedNotesEvents,
   RegistersEvents,
+  AllGovernanceEvents,
   EchoEvents,
 } from './types';
 
@@ -561,7 +561,7 @@ export class NodeGovernanceService extends BaseGovernanceService {
       };
     }
 
-    const savedEvents = await loadSavedEvents<BaseGovernanceEventTypes>({
+    const savedEvents = await loadSavedEvents<AllGovernanceEvents>({
       name: this.getInstanceName(),
       userDirectory: this.userDirectory,
       deployedBlock: this.deployedBlock,
@@ -585,7 +585,7 @@ export class NodeGovernanceService extends BaseGovernanceService {
       };
     }
 
-    const cachedEvents = await loadCachedEvents<BaseGovernanceEventTypes>({
+    const cachedEvents = await loadCachedEvents<AllGovernanceEvents>({
       name: this.getInstanceName(),
       cacheDirectory: this.cacheDirectory,
       deployedBlock: this.deployedBlock,
@@ -597,7 +597,7 @@ export class NodeGovernanceService extends BaseGovernanceService {
     return cachedEvents;
   }
 
-  async saveEvents({ events, lastBlock }: BaseEvents<BaseGovernanceEventTypes>) {
+  async saveEvents({ events, lastBlock }: BaseEvents<AllGovernanceEvents>) {
     const instanceName = this.getInstanceName();
 
     console.log('\ntotalEvents count - ', events.length);

@@ -22,6 +22,7 @@ import type {
   DepositsEvents,
   WithdrawalsEvents,
   EncryptedNotesEvents,
+  AllGovernanceEvents,
   GovernanceProposalCreatedEvents,
   GovernanceVotedEvents,
   GovernanceDelegatedEvents,
@@ -589,12 +590,6 @@ export class BaseEncryptedNotesService extends BaseEventsService<EncryptedNotesE
   }
 }
 
-export type BaseGovernanceEventTypes =
-  | GovernanceProposalCreatedEvents
-  | GovernanceVotedEvents
-  | GovernanceDelegatedEvents
-  | GovernanceUndelegatedEvents;
-
 export type BaseGovernanceServiceConstructor = {
   netId: number | string;
   provider: Provider;
@@ -605,7 +600,7 @@ export type BaseGovernanceServiceConstructor = {
   fetchDataOptions?: fetchDataOptions;
 };
 
-export class BaseGovernanceService extends BaseEventsService<BaseGovernanceEventTypes> {
+export class BaseGovernanceService extends BaseEventsService<AllGovernanceEvents> {
   batchTransactionService: BatchTransactionService;
 
   constructor({
@@ -634,70 +629,71 @@ export class BaseGovernanceService extends BaseEventsService<BaseGovernanceEvent
   }
 
   getGraphMethod() {
-    return 'getGovernanceEvents';
+    return 'getAllGovernanceEvents';
   }
 
-  async formatEvents(events: EventLog[]): Promise<BaseGovernanceEventTypes[]> {
-    const formattedEvents = events
-      .map(({ blockNumber, index: logIndex, transactionHash, args, eventName: event }) => {
-        const eventObjects = {
-          blockNumber,
-          logIndex,
-          transactionHash,
-          event,
-        };
+  async formatEvents(events: EventLog[]): Promise<AllGovernanceEvents[]> {
+    const proposalEvents: GovernanceProposalCreatedEvents[] = [];
+    const votedEvents: GovernanceVotedEvents[] = [];
+    const delegatedEvents: GovernanceDelegatedEvents[] = [];
+    const undelegatedEvents: GovernanceUndelegatedEvents[] = [];
 
-        if (event === 'ProposalCreated') {
-          const { id, proposer, target, startTime, endTime, description } = args;
-          return {
-            ...eventObjects,
-            id,
-            proposer,
-            target,
-            startTime,
-            endTime,
-            description,
-          } as GovernanceProposalCreatedEvents;
-        }
+    events.forEach(({ blockNumber, index: logIndex, transactionHash, args, eventName: event }) => {
+      const eventObjects = {
+        blockNumber,
+        logIndex,
+        transactionHash,
+        event,
+      };
 
-        if (event === 'Voted') {
-          const { proposalId, voter, support, votes } = args;
-          return {
-            ...eventObjects,
-            proposalId,
-            voter,
-            support,
-            votes,
-          } as GovernanceVotedEvents;
-        }
+      if (event === 'ProposalCreated') {
+        const { id, proposer, target, startTime, endTime, description } = args;
 
-        if (event === 'Delegated') {
-          const { account, to: delegateTo } = args;
-          return {
-            ...eventObjects,
-            account,
-            delegateTo,
-          } as GovernanceDelegatedEvents;
-        }
+        proposalEvents.push({
+          ...eventObjects,
+          id: Number(id),
+          proposer,
+          target,
+          startTime: Number(startTime),
+          endTime: Number(endTime),
+          description,
+        });
+      }
 
-        if (event === 'Undelegated') {
-          const { account, from: delegateFrom } = args;
-          return {
-            ...eventObjects,
-            account,
-            delegateFrom,
-          } as GovernanceUndelegatedEvents;
-        }
-      })
-      .filter((e) => e) as BaseGovernanceEventTypes[];
+      if (event === 'Voted') {
+        const { proposalId, voter, support, votes } = args;
 
-    type GovernanceVotedEventsIndexed = GovernanceVotedEvents & {
-      index: number;
-    };
+        votedEvents.push({
+          ...eventObjects,
+          proposalId: Number(proposalId),
+          voter,
+          support,
+          votes,
+          from: '',
+          input: '',
+        });
+      }
 
-    const votedEvents = formattedEvents
-      .map((event, index) => ({ ...event, index }))
-      .filter(({ event }) => event === 'Voted') as GovernanceVotedEventsIndexed[];
+      if (event === 'Delegated') {
+        const { account, to: delegateTo } = args;
+
+        delegatedEvents.push({
+          ...eventObjects,
+          account,
+          delegateTo,
+        });
+      }
+
+      if (event === 'Undelegated') {
+        const { account, from: delegateFrom } = args;
+
+        undelegatedEvents.push({
+          ...eventObjects,
+          account,
+          delegateFrom,
+        });
+      }
+    });
 
     if (votedEvents.length) {
       this.updateTransactionProgress({ percentage: 0 });
@@ -706,7 +702,7 @@ export class BaseGovernanceService extends BaseEventsService<BaseGovernanceEvent
         ...new Set(votedEvents.map(({ transactionHash }) => transactionHash)),
       ]);
 
-      votedEvents.forEach((event) => {
+      votedEvents.forEach((event, index) => {
         // eslint-disable-next-line prefer-const
         let { data: input, from } = txs.find((t) => t.hash === event.transactionHash) as TransactionResponse;
 
@@ -715,19 +711,17 @@ export class BaseGovernanceService extends BaseEventsService<BaseGovernanceEvent
           input = '';
         }
 
-        // @ts-expect-error check formattedEvents types later
-        formattedEvents[event.index].from = from;
-        // @ts-expect-error check formattedEvents types later
-        formattedEvents[event.index].input = input;
+        votedEvents[index].from = from;
+        votedEvents[index].input = input;
       });
     }
 
-    return formattedEvents;
+    return [...proposalEvents, ...votedEvents, ...delegatedEvents, ...undelegatedEvents];
   }
 
-  async getEventsFromGraph({ fromBlock }: { fromBlock: number }): Promise<BaseEvents<BaseGovernanceEventTypes>> {
+  async getEventsFromGraph({ fromBlock }: { fromBlock: number }): Promise<BaseEvents<AllGovernanceEvents>> {
     // TheGraph doesn't support governance subgraphs
-    if (!this.graphApi || this.graphApi.includes('api.thegraph.com')) {
+    if (!this.graphApi || !this.subgraphName || this.graphApi.includes('api.thegraph.com')) {
       return {
         events: [],
         lastBlock: fromBlock,

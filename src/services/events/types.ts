@@ -48,6 +48,12 @@ export type GovernanceUndelegatedEvents = GovernanceEvents & {
   delegateFrom: string;
 };
 
+export type AllGovernanceEvents =
+  | GovernanceProposalCreatedEvents
+  | GovernanceVotedEvents
+  | GovernanceDelegatedEvents
+  | GovernanceUndelegatedEvents;
+
 export type RegistersEvents = MinimalEvents & RelayerParams;
 
 export type DepositsEvents = MinimalEvents & {

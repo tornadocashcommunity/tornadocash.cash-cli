@@ -9,6 +9,11 @@ import type {
   EncryptedNotesEvents,
   BatchGraphOnProgress,
   EchoEvents,
+  AllGovernanceEvents,
+  GovernanceProposalCreatedEvents,
+  GovernanceVotedEvents,
+  GovernanceDelegatedEvents,
+  GovernanceUndelegatedEvents,
 } from '../events';
 import {
   _META,
@@ -19,6 +24,7 @@ import {
   GET_NOTE_ACCOUNTS,
   GET_ENCRYPTED_NOTES,
   GET_ECHO_EVENTS,
+  GET_GOVERNANCE_EVENTS,
 } from './queries';
 
 export * from './queries';
@@ -903,6 +909,226 @@ export async function getAllEncryptedNotes({
     };
   } catch (err) {
     console.log('Error from getAllEncryptedNotes query');
+    console.log(err);
+    return {
+      events: [],
+      lastSyncBlock: fromBlock,
+    };
+  }
+}
+
+export interface GraphGovernanceEvents {
+  proposals: {
+    blockNumber: number;
+    logIndex: number;
+    transactionHash: string;
+    proposalId: number;
+    proposer: string;
+    target: string;
+    startTime: number;
+    endTime: number;
+    description: string;
+  }[];
+  votes: {
+    blockNumber: number;
+    logIndex: number;
+    transactionHash: string;
+    proposalId: number;
+    voter: string;
+    support: boolean;
+    votes: string;
+    from: string;
+    input: string;
+  }[];
+  delegates: {
+    blockNumber: number;
+    logIndex: number;
+    transactionHash: string;
+    account: string;
+    delegateTo: string;
+  }[];
+  undelegates: {
+    blockNumber: number;
+    logIndex: number;
+    transactionHash: string;
+    account: string;
+    delegateFrom: string;
+  }[];
+  _meta: {
+    block: {
+      number: number;
+    };
+    hasIndexingErrors: boolean;
+  };
+}
+
+export interface getGovernanceEventsParams {
+  graphApi: string;
+  subgraphName: string;
+  fromBlock: number;
+  fetchDataOptions?: fetchDataOptions;
+  onProgress?: BatchGraphOnProgress;
+}
+
+export function getGovernanceEvents({
+  graphApi,
+  subgraphName,
+  fromBlock,
+  fetchDataOptions,
+}: getGovernanceEventsParams): Promise<GraphGovernanceEvents> {
+  return queryGraph<GraphGovernanceEvents>({
+    graphApi,
+    subgraphName,
+    query: GET_GOVERNANCE_EVENTS,
+    variables: {
+      first,
+      fromBlock,
+    },
+    fetchDataOptions,
+  });
+}
+
+export async function getAllGovernanceEvents({
+  graphApi,
+  subgraphName,
+  fromBlock,
+  fetchDataOptions,
+  onProgress,
+}: getGovernanceEventsParams): Promise<BaseGraphEvents<AllGovernanceEvents>> {
+  try {
+    const result = [];
+
+    let lastSyncBlock = fromBlock;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const {
+        proposals,
+        votes,
+        delegates,
+        undelegates,
+        _meta: {
+          block: { number: currentBlock },
+        },
+      } = await getGovernanceEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions });
+
+      lastSyncBlock = currentBlock;
+
+      const eventsLength = proposals.length + votes.length + delegates.length + undelegates.length;
+
+      if (eventsLength === 0) {
+        break;
+      }
+
+      const formattedProposals: GovernanceProposalCreatedEvents[] = proposals.map(
+        ({ blockNumber, logIndex, transactionHash, proposalId, proposer, target, startTime, endTime, description }) => {
+          return {
+            blockNumber: Number(blockNumber),
+            logIndex: Number(logIndex),
+            transactionHash,
+            event: 'ProposalCreated',
+            id: Number(proposalId),
+            proposer: getAddress(proposer),
+            target: getAddress(target),
+            startTime: Number(startTime),
+            endTime: Number(endTime),
+            description,
+          };
+        },
+      );
+
+      const formattedVotes: GovernanceVotedEvents[] = votes.map(
+        ({ blockNumber, logIndex, transactionHash, proposalId, voter, support, votes, from, input }) => {
+          // Filter spammy txs
+          if (!input || input.length > 2048) {
+            input = '';
+          }
+
+          return {
+            blockNumber: Number(blockNumber),
+            logIndex: Number(logIndex),
+            transactionHash,
+            event: 'Voted',
+            proposalId: Number(proposalId),
+            voter: getAddress(voter),
+            support,
+            votes,
+            from: getAddress(from),
+            input,
+          };
+        },
+      );
+
+      const formattedDelegates: GovernanceDelegatedEvents[] = delegates.map(
+        ({ blockNumber, logIndex, transactionHash, account, delegateTo }) => {
+          return {
+            blockNumber: Number(blockNumber),
+            logIndex: Number(logIndex),
+            transactionHash,
+            event: 'Delegated',
+            account: getAddress(account),
+            delegateTo: getAddress(delegateTo),
+          };
+        },
+      );
+
+      const formattedUndelegates: GovernanceUndelegatedEvents[] = undelegates.map(
+        ({ blockNumber, logIndex, transactionHash, account, delegateFrom }) => {
+          return {
+            blockNumber: Number(blockNumber),
+            logIndex: Number(logIndex),
+            transactionHash,
+            event: 'Undelegated',
+            account: getAddress(account),
+            delegateFrom: getAddress(delegateFrom),
+          };
+        },
+      );
+
+      let formattedEvents = [
+        ...formattedProposals,
+        ...formattedVotes,
+        ...formattedDelegates,
+        ...formattedUndelegates,
+      ].sort((a, b) => {
+        if (a.blockNumber === b.blockNumber) {
+          return a.logIndex - b.logIndex;
+        }
+        return a.blockNumber - b.blockNumber;
+      });
+
+      if (eventsLength < 900) {
+        result.push(...formattedEvents);
+        break;
+      }
+
+      const [firstEvent] = formattedEvents;
+      const [lastEvent] = formattedEvents.slice(-1);
+
+      if (typeof onProgress === 'function') {
+        onProgress({
+          type: 'Governance Events',
+          fromBlock: Number(firstEvent.blockNumber),
+          toBlock: Number(lastEvent.blockNumber),
+          count: eventsLength,
+        });
+      }
+
+      formattedEvents = formattedEvents.filter(({ blockNumber }) => blockNumber !== lastEvent.blockNumber);
+
+      fromBlock = Number(lastEvent.blockNumber);
+
+      result.push(...formattedEvents);
+    }
+
+    const [lastEvent] = result.slice(-1);
+
+    return {
+      events: result,
+      lastSyncBlock: lastEvent && lastEvent.blockNumber >= lastSyncBlock ? lastEvent.blockNumber + 1 : lastSyncBlock,
+    };
+  } catch (err) {
+    console.log('Error from getAllGovernance query');
     console.log(err);
     return {
       events: [],

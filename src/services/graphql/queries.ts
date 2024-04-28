@@ -140,3 +140,58 @@ export const GET_ENCRYPTED_NOTES = `
     }
   }
 `;
+
+export const GET_GOVERNANCE_EVENTS = `
+  query getGovernanceEvents($first: Int, $fromBlock: Int) {
+    proposals(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      proposalId
+      proposer
+      target
+      startTime
+      endTime
+      description
+    }
+    votes(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      proposalId
+      voter
+      support
+      votes
+      from
+      input
+    }
+    delegates(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      account
+      delegateTo
+    }
+    undelegates(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      account
+      delegateFrom
+    }
+    _meta {
+      block {
+        number
+      }
+      hasIndexingErrors
+    }
+  }
+`;
+
+export const GET_GOVERNANCE_APY = `
+  stakeDailyBurns(first: 30, orderBy: date, orderDirection: desc) {
+    id
+    date
+    dailyAmountBurned
+  }
+`;
