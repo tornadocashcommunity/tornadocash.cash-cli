@@ -1,6 +1,6 @@
 {
   "name": "tornado-cli",
-  "version": "1.0.1-alpha",
+  "version": "1.0.2-alpha",
   "description": "Modern Toolsets for Privacy Pools on Ethereum",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

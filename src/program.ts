@@ -1448,8 +1448,6 @@ export function tornadoProgram() {
       const validRelayers = allRelayers.validRelayers as RelayerInfo[];
       const invalidRelayers = allRelayers.invalidRelayers as RelayerError[];
 
-      console.log(validRelayers);
-
       const relayersTable = new Table();
 
       relayersTable.push(
