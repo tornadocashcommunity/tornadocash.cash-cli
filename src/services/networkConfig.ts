@@ -714,7 +714,7 @@ export const defaultConfig: networkConfig = {
   },
 };
 
-export const enabledChains = Object.values(NetId) as NetIdType[];
+export const enabledChains = Object.values(NetId).filter((n) => typeof n === 'number') as NetIdType[];
 
 /**
  * Custom config object to extend default config

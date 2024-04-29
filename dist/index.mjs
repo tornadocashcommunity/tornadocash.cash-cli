@@ -6416,7 +6416,7 @@ const defaultConfig = {
     }
   }
 };
-const enabledChains = Object.values(NetId);
+const enabledChains = Object.values(NetId).filter((n) => typeof n === "number");
 let customConfig = {};
 function addNetwork(newConfig) {
   enabledChains.push(
