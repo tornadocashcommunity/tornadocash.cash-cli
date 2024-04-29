@@ -58,6 +58,26 @@ module.exports = [
     module: {
       rules: [esbuildLoader]
     },
+    entry: './src/cli.ts',
+    output: {
+      filename: 'cli.js',
+      path: path.resolve(__dirname, './dist'),
+    },
+    target: 'node',
+    plugins: [],
+    resolve: {
+      extensions: ['.tsx', '.ts', '.js'],
+      alias: {}
+    },
+    optimization: {
+      minimize: false,
+    }
+  },
+  {
+    mode: 'production',
+    module: {
+      rules: [esbuildLoader]
+    },
     entry: './src/merkleTreeWorker.ts',
     output: {
       filename: 'merkleTreeWorker.umd.js',

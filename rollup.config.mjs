@@ -56,28 +56,6 @@ const config = [
     ],
   },
   {
-    input: 'src/cli.ts',
-    output: [
-      {
-        file: pkgJson.bin[pkgJson.name],
-        format: "cjs",
-        esModule: false,
-        banner: '#!/usr/bin/env node\n'
-      },
-    ],
-    plugins: [
-      esbuild({
-        include: /\.[jt]sx?$/,
-        minify: false,
-        sourceMap: true,
-        target: 'es2016',
-      }),
-      commonjs(),
-      nodeResolve(),
-      json()
-    ],
-  },
-  {
     input: 'src/merkleTreeWorker.ts',
     output: [
       {
