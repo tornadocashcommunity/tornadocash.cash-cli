@@ -16,6 +16,7 @@ import {
   BatchBlockOnProgress,
 } from '../batch';
 import { fetchDataOptions } from '../providers';
+import type { NetIdType } from '../networkConfig';
 import type {
   BaseEvents,
   MinimalEvents,
@@ -36,7 +37,7 @@ export const DEPOSIT = 'deposit';
 export const WITHDRAWAL = 'withdrawal';
 
 export type BaseEventsServiceConstructor = {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;
@@ -66,7 +67,7 @@ export type BaseGraphParams = {
 };
 
 export class BaseEventsService<EventType extends MinimalEvents> {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;
@@ -324,7 +325,7 @@ export class BaseEventsService<EventType extends MinimalEvents> {
 }
 
 export type BaseDepositsServiceConstructor = {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;
@@ -464,7 +465,7 @@ export class BaseDepositsService extends BaseEventsService<DepositsEvents | With
 }
 
 export type BaseEchoServiceConstructor = {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;
@@ -534,7 +535,7 @@ export class BaseEchoService extends BaseEventsService<EchoEvents> {
 }
 
 export type BaseEncryptedNotesServiceConstructor = {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;
@@ -591,7 +592,7 @@ export class BaseEncryptedNotesService extends BaseEventsService<EncryptedNotesE
 }
 
 export type BaseGovernanceServiceConstructor = {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;
@@ -733,7 +734,7 @@ export class BaseGovernanceService extends BaseEventsService<AllGovernanceEvents
 }
 
 export type BaseRegistryServiceConstructor = {
-  netId: number | string;
+  netId: NetIdType;
   provider: Provider;
   graphApi?: string;
   subgraphName?: string;

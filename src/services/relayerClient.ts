@@ -2,7 +2,7 @@ import { getAddress, namehash, parseEther } from 'ethers';
 import type { Aggregator } from '@tornado/contracts';
 import type { RelayerStructOutput } from '@tornado/contracts/dist/contracts/Governance/Aggregator/Aggregator';
 import { sleep } from './utils';
-import type { Config } from './networkConfig';
+import { NetId, NetIdType, Config } from './networkConfig';
 import { fetchData, fetchDataOptions } from './providers';
 import { ajv, jobsSchema, getStatusSchema } from './schemas';
 import type { snarkProofs } from './websnark';
@@ -15,7 +15,7 @@ export interface RelayerParams {
 }
 
 export interface Relayer {
-  netId: number;
+  netId: NetIdType;
   url: string;
   hostname: string;
   rewardAccount: string;
@@ -57,7 +57,7 @@ export interface RelayerStatus {
     fast: number;
     additionalProperties?: number;
   };
-  netId: number;
+  netId: NetIdType;
   ethPrices?: {
     [key in string]: string;
   };
@@ -107,14 +107,14 @@ export function parseSemanticVersion(version: string) {
   return groups as unknown as semanticVersion;
 }
 
-export function isRelayerUpdated(relayerVersion: string, netId: number | string) {
+export function isRelayerUpdated(relayerVersion: string, netId: NetIdType) {
   const { major, patch, prerelease } = parseSemanticVersion(relayerVersion);
   // Save backwards compatibility with V4 relayers for Ethereum Mainnet
-  const requiredMajor = netId === 1 ? '4' : '5';
+  const requiredMajor = netId === NetId.MAINNET ? '4' : '5';
   const isUpdatedMajor = major === requiredMajor;
 
   if (prerelease) return false;
-  return isUpdatedMajor && (Number(patch) >= 5 || Number(netId) !== 1); // Patch checking - also backwards compatibility for Mainnet
+  return isUpdatedMajor && (Number(patch) >= 5 || netId !== NetId.MAINNET); // Patch checking - also backwards compatibility for Mainnet
 }
 
 export function calculateScore({ stakeBalance, tornadoServiceFee }: RelayerInfo, minFee = 0.33, maxFee = 0.53) {
@@ -159,10 +159,10 @@ export function getSupportedInstances(instanceList: RelayerInstanceList) {
   return rawList.map((l) => getAddress(l));
 }
 
-export function pickWeightedRandomRelayer(relayers: RelayerInfo[], netId: string | number) {
+export function pickWeightedRandomRelayer(relayers: RelayerInfo[], netId: NetIdType) {
   let minFee: number, maxFee: number;
 
-  if (Number(netId) !== 1) {
+  if (netId !== NetId.MAINNET) {
     minFee = 0.01;
     maxFee = 0.3;
   }
@@ -179,7 +179,7 @@ export function pickWeightedRandomRelayer(relayers: RelayerInfo[], netId: string
 }
 
 export interface RelayerClientConstructor {
-  netId: number | string;
+  netId: NetIdType;
   config: Config;
   Aggregator: Aggregator;
   fetchDataOptions?: fetchDataOptions;
@@ -190,14 +190,14 @@ export type RelayerClientWithdraw = snarkProofs & {
 };
 
 export class RelayerClient {
-  netId: number;
+  netId: NetIdType;
   config: Config;
   Aggregator: Aggregator;
   selectedRelayer?: Relayer;
   fetchDataOptions?: fetchDataOptions;
 
   constructor({ netId, config, Aggregator, fetchDataOptions }: RelayerClientConstructor) {
-    this.netId = Number(netId);
+    this.netId = netId;
     this.config = config;
     this.Aggregator = Aggregator;
     this.fetchDataOptions = fetchDataOptions;
@@ -240,7 +240,7 @@ export class RelayerClient {
       throw new Error('This relayer serves a different network');
     }
 
-    if (relayerAddress && this.netId === 1 && status.rewardAccount !== relayerAddress) {
+    if (relayerAddress && this.netId === NetId.MAINNET && status.rewardAccount !== relayerAddress) {
       throw new Error('The Relayer reward address must match registered address');
     }
 

@@ -28,7 +28,6 @@ import {
   ZeroAddress,
   MaxUint256,
   Transaction,
-  BigNumberish,
   getAddress,
 } from 'ethers';
 import type MerkleTree from '@tornado/fixed-merkle-tree';
@@ -73,6 +72,8 @@ import {
   Invoice,
   fetchData,
   fetchDataOptions,
+  NetId,
+  NetIdType,
   getInstanceByAddress,
   getSubdomains,
   getConfig,
@@ -87,7 +88,7 @@ import {
 
 const DEFAULT_GAS_LIMIT = Number(process.env.DEFAULT_GAS_LIMIT) || 600_000;
 
-const RELAYER_NETWORK = Number(process.env.RELAYER_NETWORK) || 1;
+const RELAYER_NETWORK = Number(process.env.RELAYER_NETWORK) || NetId.MAINNET;
 
 // Where cached events, trees, circuits, and key is saved
 const STATIC_DIR = process.env.CACHE_DIR || path.join(__dirname, '../static');
@@ -231,7 +232,7 @@ export function getProgramGraphAPI(options: commonProgramOptions, config: Config
 }
 
 export function getProgramProvider(
-  netId: BigNumberish,
+  netId: NetIdType,
   rpcUrl: string = '',
   config: Config,
   providerOptions?: getProviderOptions,
@@ -270,7 +271,7 @@ export async function getProgramRelayer({
 }: {
   options: commonProgramOptions;
   fetchDataOptions?: fetchDataOptions;
-  netId: number | string;
+  netId: NetIdType;
 }): Promise<{
   validRelayers?: RelayerInfo[] | Relayer[];
   invalidRelayers?: RelayerError[];
@@ -458,7 +459,7 @@ export function tornadoProgram() {
     .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
     .argument('<currency>', 'Currency to deposit on Tornado Cash')
     .argument('<amount>', 'Amount to deposit on Tornado Cash')
-    .action(async (netId: string | number, currency: string, amount: string) => {
+    .action(async (netId: NetIdType, currency: string, amount: string) => {
       currency = currency.toLowerCase();
 
       const config = getConfig(netId);
@@ -518,7 +519,7 @@ export function tornadoProgram() {
     .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
     .argument('<currency>', 'Currency to deposit on Tornado Cash')
     .argument('<amount>', 'Amount to deposit on Tornado Cash')
-    .action(async (netId: string | number, currency: string, amount: string, cmdOptions: commonProgramOptions) => {
+    .action(async (netId: NetIdType, currency: string, amount: string, cmdOptions: commonProgramOptions) => {
       const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
       currency = currency.toLowerCase();
       const { rpc, accountKey } = options;
@@ -1267,11 +1268,7 @@ export function tornadoProgram() {
     .argument('[netId]', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
     .argument('[currency]', 'Currency to sync events')
     .action(
-      async (
-        netIdOpts: number | string | undefined,
-        currencyOpts: string | undefined,
-        cmdOptions: commonProgramOptions,
-      ) => {
+      async (netIdOpts: NetIdType | undefined, currencyOpts: string | undefined, cmdOptions: commonProgramOptions) => {
         const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
         const { rpc } = options;
 
@@ -1439,7 +1436,7 @@ export function tornadoProgram() {
     .command('relayers')
     .description('List all registered relayers from the tornado cash registry.\n\n')
     .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
-    .action(async (netIdOpts: number | string, cmdOptions: commonProgramOptions) => {
+    .action(async (netIdOpts: NetIdType, cmdOptions: commonProgramOptions) => {
       const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
 
       const allRelayers = await getProgramRelayer({
@@ -1507,7 +1504,7 @@ export function tornadoProgram() {
         'Requires a valid signable wallet (mnemonic or a private key) to work (Since they would encrypt or encrypted)',
     )
     .argument('<netId>', 'Network Chain ID to connect with (see https://chainlist.org for examples)', parseNumber)
-    .action(async (netId: string | number, cmdOptions: commonProgramOptions) => {
+    .action(async (netId: NetIdType, cmdOptions: commonProgramOptions) => {
       const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
       const { rpc } = options;
 
@@ -1624,7 +1621,7 @@ export function tornadoProgram() {
       'Account key generated from UI or the createAccount to store encrypted notes on-chain',
       parseRecoveryKey,
     )
-    .action(async (netId: string | number, accountKey: string | undefined, cmdOptions: commonProgramOptions) => {
+    .action(async (netId: NetIdType, accountKey: string | undefined, cmdOptions: commonProgramOptions) => {
       const { options, fetchDataOptions } = await getProgramOptions(cmdOptions);
       const { rpc } = options;
       if (!accountKey) {
@@ -1701,7 +1698,7 @@ export function tornadoProgram() {
     .argument('[token]', 'ERC20 Token Contract to check Token Balance', parseAddress)
     .action(
       async (
-        netId: string | number,
+        netId: NetIdType,
         to: string,
         amountArgs: number | undefined,
         tokenArgs: string | undefined,
@@ -1838,7 +1835,7 @@ export function tornadoProgram() {
     .argument('[token]', 'ERC20 Token Contract to check Token Balance', parseAddress)
     .action(
       async (
-        netId: string | number,
+        netId: NetIdType,
         addressArgs: string | undefined,
         tokenArgs: string | undefined,
         cmdOptions: commonProgramOptions,

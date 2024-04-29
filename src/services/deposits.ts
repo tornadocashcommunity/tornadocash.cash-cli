@@ -1,10 +1,11 @@
 import { bnToBytes, bytesToBN, leBuff2Int, leInt2Buff, rBigInt, toFixedHex } from './utils';
 import { buffPedersenHash } from './pedersen';
+import type { NetIdType } from './networkConfig';
 
 export type DepositType = {
   currency: string;
   amount: string;
-  netId: string | number;
+  netId: NetIdType;
 };
 
 export type createDepositParams = {
@@ -61,7 +62,7 @@ export async function createDeposit({ nullifier, secret }: createDepositParams):
 export interface DepositConstructor {
   currency: string;
   amount: string;
-  netId: number;
+  netId: NetIdType;
   nullifier: bigint;
   secret: bigint;
   note: string;
@@ -74,7 +75,7 @@ export interface DepositConstructor {
 export class Deposit {
   currency: string;
   amount: string;
-  netId: number;
+  netId: NetIdType;
 
   nullifier: bigint;
   secret: bigint;
@@ -148,7 +149,7 @@ export class Deposit {
     const newDeposit = new Deposit({
       currency: currency.toLowerCase(),
       amount: amount,
-      netId: Number(netId),
+      netId,
       note: `tornado-${currency.toLowerCase()}-${amount}-${netId}-${depositObject.noteHex}`,
       noteHex: depositObject.noteHex,
       invoice: `tornadoInvoice-${currency.toLowerCase()}-${amount}-${netId}-${depositObject.commitmentHex}`,
@@ -182,14 +183,14 @@ export class Deposit {
     const invoice = `tornadoInvoice-${currency}-${amount}-${netId}-${depositObject.commitmentHex}`;
 
     const newDeposit = new Deposit({
-      currency: currency,
-      amount: amount,
-      netId: netId,
+      currency,
+      amount,
+      netId,
       note: noteString,
       noteHex: depositObject.noteHex,
-      invoice: invoice,
-      nullifier: nullifier,
-      secret: secret,
+      invoice,
+      nullifier,
+      secret,
       commitmentHex: depositObject.commitmentHex,
       nullifierHex: depositObject.nullifierHex,
     });
@@ -205,7 +206,7 @@ export type parsedInvoiceExec = DepositType & {
 export class Invoice {
   currency: string;
   amount: string;
-  netId: number;
+  netId: NetIdType;
   commitment: string;
   invoice: string;
 

@@ -22,7 +22,6 @@ import {
   Network,
   parseUnits,
   FetchUrlFeeDataNetworkPlugin,
-  BigNumberish,
   FeeData,
   EnsPlugin,
   GasCostPlugin,
@@ -30,7 +29,7 @@ import {
 import type { RequestInfo, RequestInit, Response, HeadersInit } from 'node-fetch';
 import { GasPriceOracle, GasPriceOracle__factory, Multicall, Multicall__factory } from '../typechain';
 import { isNode, sleep } from './utils';
-import type { Config } from './networkConfig';
+import type { Config, NetIdType } from './networkConfig';
 import { multicall } from './multicall';
 
 declare global {
@@ -366,7 +365,7 @@ export async function getProvider(rpcUrl: string, fetchOptions?: getProviderOpti
 }
 
 export function getProviderWithNetId(
-  netId: BigNumberish,
+  netId: NetIdType,
   rpcUrl: string,
   config: Config,
   fetchOptions?: getProviderOptions,
@@ -604,7 +603,7 @@ export type handleWalletFunc = (...args: any[]) => void;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export type TornadoBrowserProviderOptions = TornadoWalletOptions & {
-  webChainId?: BigNumberish;
+  webChainId?: NetIdType;
   connectWallet?: connectWalletFunc;
   handleNetworkChanges?: handleWalletFunc;
   handleAccountChanges?: handleWalletFunc;

@@ -1,4 +1,4 @@
-import type { Config } from '../networkConfig';
+import { Config, NetId, NetIdType } from '../networkConfig';
 
 export type statusInstanceType = {
   type: string;
@@ -110,7 +110,7 @@ const statusSchema: statusSchema = {
   required: ['rewardAccount', 'instances', 'netId', 'tornadoServiceFee', 'version', 'health'],
 };
 
-export function getStatusSchema(netId: number | string, config: Config) {
+export function getStatusSchema(netId: NetIdType, config: Config) {
   const { tokens, optionalTokens = [], nativeCurrency } = config;
 
   // deep copy schema
@@ -162,7 +162,7 @@ export function getStatusSchema(netId: number | string, config: Config) {
 
   schema.properties.instances = instances;
 
-  if (Number(netId) === 1) {
+  if (netId === NetId.MAINNET) {
     const _tokens = Object.keys(tokens).filter((t) => t !== nativeCurrency);
 
     const ethPrices: statusEthPricesType = {

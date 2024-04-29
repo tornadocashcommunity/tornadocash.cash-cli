@@ -5,6 +5,7 @@ import { isNode, toFixedHex } from './utils';
 import { mimc } from './mimc';
 import type { DepositType } from './deposits';
 import type { DepositsEvents } from './events';
+import type { NetIdType } from './networkConfig';
 
 export type MerkleTreeConstructor = DepositType & {
   Tornado: Tornado;
@@ -17,7 +18,7 @@ export type MerkleTreeConstructor = DepositType & {
 export class MerkleTreeService {
   currency: string;
   amount: string;
-  netId: number;
+  netId: NetIdType;
   Tornado: Tornado;
   commitmentHex?: string;
   instanceName: string;

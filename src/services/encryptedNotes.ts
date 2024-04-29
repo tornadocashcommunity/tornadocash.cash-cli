@@ -3,6 +3,7 @@ import { Echoer } from '@tornado/contracts';
 import { Wallet, computeAddress, getAddress } from 'ethers';
 import { crypto, base64ToBytes, bytesToBase64, bytesToHex, hexToBytes, toFixedHex, concatBytes } from './utils';
 import { EchoEvents, EncryptedNotesEvents } from './events';
+import type { NetIdType } from './networkConfig';
 
 export interface NoteToEncrypt {
   address: string;
@@ -43,7 +44,7 @@ export function unpackEncryptedMessage(encryptedMessage: string) {
 }
 
 export interface NoteAccountConstructor {
-  netId: string | number;
+  netId: NetIdType;
   blockNumber?: number;
   // hex
   recoveryKey?: string;
@@ -51,7 +52,7 @@ export interface NoteAccountConstructor {
 }
 
 export class NoteAccount {
-  netId: number;
+  netId: NetIdType;
   blockNumber?: number;
   // Dedicated 32 bytes private key only used for note encryption, backed up to an Echoer and local for future derivation
   // Note that unlike the private key it shouldn't have the 0x prefix

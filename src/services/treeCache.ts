@@ -7,9 +7,10 @@ import { MerkleTree } from '@tornado/fixed-merkle-tree';
 import BloomFilter from 'bloomfilter.js';
 import { saveUserFile } from './data';
 import { DepositsEvents } from './events';
+import type { NetIdType } from './networkConfig';
 
 export interface TreeCacheConstructor {
-  netId: number | string;
+  netId: NetIdType;
   amount: string;
   currency: string;
   userDirectory: string;
@@ -28,7 +29,7 @@ export interface treeMetadata {
 }
 
 export class TreeCache {
-  netId: number | string;
+  netId: NetIdType;
   amount: string;
   currency: string;
   userDirectory: string;

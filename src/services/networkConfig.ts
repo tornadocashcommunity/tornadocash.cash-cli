@@ -1,3 +1,19 @@
+/**
+ * Type of default supported networks
+ */
+export enum NetId {
+  MAINNET = 1,
+  BSC = 56,
+  POLYGON = 137,
+  OPTIMISM = 10,
+  ARBITRUM = 42161,
+  GNOSIS = 100,
+  AVALANCHE = 43114,
+  SEPOLIA = 11155111,
+}
+
+export type NetIdType = NetId | number;
+
 export interface RpcUrl {
   name: string;
   url: string;
@@ -85,7 +101,7 @@ export type Config = {
 };
 
 export type networkConfig = {
-  [key in string]: Config;
+  [key in NetIdType]: Config;
 };
 
 const theGraph = {
@@ -98,7 +114,7 @@ const tornado = {
 };
 
 export const defaultConfig: networkConfig = {
-  netId1: {
+  [NetId.MAINNET]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 80,
@@ -246,7 +262,7 @@ export const defaultConfig: networkConfig = {
       MINING_BLOCK_TIME: 15,
     },
   },
-  netId56: {
+  [NetId.BSC]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 5,
@@ -311,7 +327,7 @@ export const defaultConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 8159269,
     },
   },
-  netId137: {
+  [NetId.POLYGON]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 100,
@@ -369,7 +385,7 @@ export const defaultConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 16257996,
     },
   },
-  netId10: {
+  [NetId.OPTIMISM]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 0.001,
@@ -435,7 +451,7 @@ export const defaultConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 2243694,
     },
   },
-  netId42161: {
+  [NetId.ARBITRUM]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 4,
@@ -500,7 +516,7 @@ export const defaultConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 3430605,
     },
   },
-  netId100: {
+  [NetId.GNOSIS]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 6,
@@ -565,7 +581,7 @@ export const defaultConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 17754564,
     },
   },
-  netId43114: {
+  [NetId.AVALANCHE]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 225,
@@ -620,7 +636,7 @@ export const defaultConfig: networkConfig = {
       ENCRYPTED_NOTES_BLOCK: 4429813,
     },
   },
-  netId11155111: {
+  [NetId.SEPOLIA]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 2,
@@ -698,7 +714,7 @@ export const defaultConfig: networkConfig = {
   },
 };
 
-export const enabledChains = ['1', '10', '56', '100', '137', '42161', '43114', '11155111'];
+export const enabledChains = Object.values(NetId) as NetIdType[];
 
 /**
  * Custom config object to extend default config
@@ -711,12 +727,12 @@ export let customConfig: networkConfig = {};
 /**
  * Add or override existing network config object
  *
- * Could be also called on the UI hook so that the UI could allow people to use privacy pools that it hasn't deployed
+ * Could be also called on the UI hook so that the UI could allow people to use custom privacy pools
  */
 export function addNetwork(newConfig: networkConfig) {
   enabledChains.push(
     ...Object.keys(newConfig)
-      .map((netId) => netId.replace('netId', ''))
+      .map((netId) => Number(netId))
       .filter((netId) => !enabledChains.includes(netId)),
   );
 
@@ -734,25 +750,25 @@ export function getNetworkConfig(): networkConfig {
   };
 
   return enabledChains.reduce((acc, curr) => {
-    acc[`netId${curr}`] = allConfig[`netId${curr}`];
+    acc[curr] = allConfig[curr];
     return acc;
   }, {} as networkConfig);
 }
 
-export function getConfig(netId: string | number) {
+export function getConfig(netId: NetIdType) {
   const allConfig = getNetworkConfig();
 
-  const chainConfig = allConfig[`netId${netId}`];
+  const chainConfig = allConfig[netId];
 
   if (!chainConfig) {
-    const errMsg = `No config found for ${netId}!`;
+    const errMsg = `No config found for network ${netId}!`;
     throw new Error(errMsg);
   }
 
   return chainConfig;
 }
 
-export function getInstanceByAddress({ netId, address }: { netId: number | string; address: string }) {
+export function getInstanceByAddress({ netId, address }: { netId: NetIdType; address: string }) {
   const { tokens } = getConfig(netId);
 
   for (const [currency, { instanceAddress }] of Object.entries(tokens)) {
@@ -770,5 +786,5 @@ export function getInstanceByAddress({ netId, address }: { netId: number | strin
 export function getSubdomains() {
   const allConfig = getNetworkConfig();
 
-  return enabledChains.map((chain) => allConfig[`netId${chain}`].ensSubdomainKey);
+  return enabledChains.map((chain) => allConfig[chain].ensSubdomainKey);
 }
