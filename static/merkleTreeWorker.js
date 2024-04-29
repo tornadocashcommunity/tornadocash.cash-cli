@@ -19824,5 +19824,5 @@ if (isNode && threads) {
     postMessage(merkleTree.toString());
   }));
 } else {
-  throw new Error("This browser / environment doesn't support workers!");
+  throw new Error("This browser / environment does not support workers!");
 }

@@ -1,7 +1,8 @@
+import type { NetIdType } from './networkConfig';
 export type DepositType = {
     currency: string;
     amount: string;
-    netId: string | number;
+    netId: NetIdType;
 };
 export type createDepositParams = {
     nullifier: bigint;
@@ -34,7 +35,7 @@ export declare function createDeposit({ nullifier, secret }: createDepositParams
 export interface DepositConstructor {
     currency: string;
     amount: string;
-    netId: number;
+    netId: NetIdType;
     nullifier: bigint;
     secret: bigint;
     note: string;
@@ -46,7 +47,7 @@ export interface DepositConstructor {
 export declare class Deposit {
     currency: string;
     amount: string;
-    netId: number;
+    netId: NetIdType;
     nullifier: bigint;
     secret: bigint;
     note: string;
@@ -65,7 +66,7 @@ export type parsedInvoiceExec = DepositType & {
 export declare class Invoice {
     currency: string;
     amount: string;
-    netId: number;
+    netId: NetIdType;
     commitment: string;
     invoice: string;
     constructor(invoiceString: string);

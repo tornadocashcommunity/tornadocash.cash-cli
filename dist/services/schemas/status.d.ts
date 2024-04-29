@@ -1,4 +1,4 @@
-import type { Config } from '../networkConfig';
+import { Config, NetIdType } from '../networkConfig';
 export type statusInstanceType = {
     type: string;
     properties: {
@@ -88,5 +88,5 @@ declare const bnType: {
     type: string;
     BN: boolean;
 };
-export declare function getStatusSchema(netId: number | string, config: Config): statusSchema;
+export declare function getStatusSchema(netId: NetIdType, config: Config): statusSchema;
 export {};

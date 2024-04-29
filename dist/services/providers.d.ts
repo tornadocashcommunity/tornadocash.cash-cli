@@ -3,9 +3,9 @@
 /// <reference types="node" />
 import type { EventEmitter } from 'stream';
 import type { RequestOptions } from 'http';
-import { JsonRpcApiProvider, JsonRpcProvider, Wallet, FetchGetUrlFunc, Provider, SigningKey, TransactionRequest, JsonRpcSigner, BrowserProvider, Networkish, Eip1193Provider, VoidSigner, FetchUrlFeeDataNetworkPlugin, BigNumberish } from 'ethers';
+import { JsonRpcApiProvider, JsonRpcProvider, Wallet, FetchGetUrlFunc, Provider, SigningKey, TransactionRequest, JsonRpcSigner, BrowserProvider, Networkish, Eip1193Provider, VoidSigner, FetchUrlFeeDataNetworkPlugin } from 'ethers';
 import type { RequestInfo, RequestInit, Response, HeadersInit } from 'node-fetch';
-import type { Config } from './networkConfig';
+import type { Config, NetIdType } from './networkConfig';
 declare global {
     interface Window {
         ethereum?: Eip1193Provider & EventEmitter;
@@ -41,7 +41,7 @@ export type getProviderOptions = fetchDataOptions & {
 };
 export declare function getGasOraclePlugin(networkKey: string, fetchOptions?: getProviderOptions): FetchUrlFeeDataNetworkPlugin;
 export declare function getProvider(rpcUrl: string, fetchOptions?: getProviderOptions): Promise<JsonRpcProvider>;
-export declare function getProviderWithNetId(netId: BigNumberish, rpcUrl: string, config: Config, fetchOptions?: getProviderOptions): JsonRpcProvider;
+export declare function getProviderWithNetId(netId: NetIdType, rpcUrl: string, config: Config, fetchOptions?: getProviderOptions): JsonRpcProvider;
 export declare const populateTransaction: (signer: TornadoWallet | TornadoVoidSigner | TornadoRpcSigner, tx: TransactionRequest) => Promise<TransactionRequest>;
 export type TornadoWalletOptions = {
     gasPriceBump?: number;
@@ -80,7 +80,7 @@ export declare class TornadoRpcSigner extends JsonRpcSigner {
 export type connectWalletFunc = (...args: any[]) => Promise<void>;
 export type handleWalletFunc = (...args: any[]) => void;
 export type TornadoBrowserProviderOptions = TornadoWalletOptions & {
-    webChainId?: BigNumberish;
+    webChainId?: NetIdType;
     connectWallet?: connectWalletFunc;
     handleNetworkChanges?: handleWalletFunc;
     handleAccountChanges?: handleWalletFunc;

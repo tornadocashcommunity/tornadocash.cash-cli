@@ -1,6 +1,6 @@
 import type { Aggregator } from '@tornado/contracts';
 import type { RelayerStructOutput } from '@tornado/contracts/dist/contracts/Governance/Aggregator/Aggregator';
-import type { Config } from './networkConfig';
+import { NetIdType, Config } from './networkConfig';
 import { fetchDataOptions } from './providers';
 import type { snarkProofs } from './websnark';
 export declare const MIN_STAKE_BALANCE: bigint;
@@ -9,20 +9,22 @@ export interface RelayerParams {
     relayerAddress?: string;
 }
 export interface Relayer {
-    netId: number;
+    netId: NetIdType;
     url: string;
+    hostname: string;
     rewardAccount: string;
+    instances: string[];
+    gasPrice?: number;
+    ethPrices?: {
+        [key in string]: string;
+    };
     currentQueue: number;
     tornadoServiceFee: number;
 }
 export type RelayerInfo = Relayer & {
-    hostname: string;
     ensName: string;
     stakeBalance: bigint;
     relayerAddress: string;
-    ethPrices?: {
-        [key in string]: string;
-    };
 };
 export type RelayerError = {
     hostname: string;
@@ -46,7 +48,7 @@ export interface RelayerStatus {
         fast: number;
         additionalProperties?: number;
     };
-    netId: number;
+    netId: NetIdType;
     ethPrices?: {
         [key in string]: string;
     };
@@ -84,12 +86,20 @@ export interface semanticVersion {
     buildmetadata?: string;
 }
 export declare function parseSemanticVersion(version: string): semanticVersion;
-export declare function isRelayerUpdated(relayerVersion: string, netId: number | string): boolean;
+export declare function isRelayerUpdated(relayerVersion: string, netId: NetIdType): boolean;
 export declare function calculateScore({ stakeBalance, tornadoServiceFee }: RelayerInfo, minFee?: number, maxFee?: number): bigint;
 export declare function getWeightRandom(weightsScores: bigint[], random: bigint): number;
-export declare function pickWeightedRandomRelayer(relayers: RelayerInfo[], netId: string | number): RelayerInfo;
+export type RelayerInstanceList = {
+    [key in string]: {
+        instanceAddress: {
+            [key in string]: string;
+        };
+    };
+};
+export declare function getSupportedInstances(instanceList: RelayerInstanceList): string[];
+export declare function pickWeightedRandomRelayer(relayers: RelayerInfo[], netId: NetIdType): RelayerInfo;
 export interface RelayerClientConstructor {
-    netId: number | string;
+    netId: NetIdType;
     config: Config;
     Aggregator: Aggregator;
     fetchDataOptions?: fetchDataOptions;
@@ -98,7 +108,7 @@ export type RelayerClientWithdraw = snarkProofs & {
     contract: string;
 };
 export declare class RelayerClient {
-    netId: number;
+    netId: NetIdType;
     config: Config;
     Aggregator: Aggregator;
     selectedRelayer?: Relayer;

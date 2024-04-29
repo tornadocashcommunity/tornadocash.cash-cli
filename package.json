@@ -16,7 +16,7 @@
     "lint": "eslint src/**/*.ts --ext .ts --ignore-pattern src/typechain",
     "build:node": "ts-node scripts/fflate.ts && rollup -c",
     "build:web": "webpack",
-    "build": "yarn build:node && yarn build:web",
+    "build": "yarn types && yarn build:node && yarn build:web",
     "start": "ts-node src/cli.ts",
     "startHelp": "ts-node src/cli.ts help",
     "createDeposit": "ts-node src/cli.ts create",

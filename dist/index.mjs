@@ -1,9 +1,9 @@
-import { Interface, Contract, FetchUrlFeeDataNetworkPlugin, FetchRequest, Network, EnsPlugin, GasCostPlugin, JsonRpcProvider, Wallet, HDNodeWallet, VoidSigner, JsonRpcSigner, BrowserProvider, parseUnits, FeeData, getAddress, Transaction, Mnemonic, computeAddress, parseEther, namehash, ZeroAddress } from 'ethers';
+import { Interface, Contract, FetchUrlFeeDataNetworkPlugin, FetchRequest, Network, EnsPlugin, GasCostPlugin, JsonRpcProvider, Wallet, HDNodeWallet, VoidSigner, JsonRpcSigner, BrowserProvider, parseUnits, FeeData, getAddress, computeAddress, Transaction, Mnemonic, parseEther, namehash, ZeroAddress } from 'ethers';
 import crossFetch from 'cross-fetch';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
-import { URL } from 'url';
+import { webcrypto } from 'crypto';
 import BN from 'bn.js';
 import Table from 'cli-table3';
 import moment from 'moment';
@@ -12,9 +12,11 @@ import { stat, mkdir, writeFile, readFile } from 'fs/promises';
 import { zip, unzip } from 'fflate';
 import Ajv from 'ajv';
 import { buildPedersenHash, buildMimcSponge } from 'circomlibjs';
+import { getEncryptionPublicKey, encrypt, decrypt } from '@metamask/eth-sig-util';
 import { Worker as Worker$1 } from 'worker_threads';
-import { MerkleTree } from '@tornado/fixed-merkle-tree';
+import { MerkleTree, PartialMerkleTree } from '@tornado/fixed-merkle-tree';
 import { InvalidArgumentError } from 'commander';
+import BloomFilter from 'bloomfilter.js';
 import * as websnarkUtils from '@tornado/websnark/src/utils';
 import websnarkGroth from '@tornado/websnark/src/groth16';
 
@@ -2559,6 +2561,7 @@ BigInt.prototype.toJSON = function() {
   return this.toString();
 };
 const isNode = !process.browser && typeof globalThis.window === "undefined";
+const crypto = isNode ? webcrypto : globalThis.crypto;
 const chunk = (arr, size) => [...Array(Math.ceil(arr.length / size))].map((_, i) => arr.slice(size * i, size + size * i));
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -2574,27 +2577,35 @@ function validateUrl(url, protocols) {
     return false;
   }
 }
+function concatBytes(...arrays) {
+  const totalSize = arrays.reduce((acc, e) => acc + e.length, 0);
+  const merged = new Uint8Array(totalSize);
+  arrays.forEach((array, i, arrays2) => {
+    const offset = arrays2.slice(0, i).reduce((acc, e) => acc + e.length, 0);
+    merged.set(array, offset);
+  });
+  return merged;
+}
 function bufferToBytes(b) {
   return new Uint8Array(b.buffer);
 }
 function bytesToBase64(bytes) {
-  let binary = "";
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; ++i) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+  return btoa(String.fromCharCode.apply(null, Array.from(bytes)));
 }
 function base64ToBytes(base64) {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 function bytesToHex(bytes) {
   return "0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function hexToBytes(hexString) {
+  if (hexString.slice(0, 2) === "0x") {
+    hexString = hexString.replace("0x", "");
+  }
+  if (hexString.length % 2 !== 0) {
+    hexString = "0" + hexString;
+  }
+  return Uint8Array.from(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
 }
 function bytesToBN(bytes) {
   return BigInt(bytesToHex(bytes));
@@ -2635,7 +2646,7 @@ function substring(str, length = 10) {
   return `${str.substring(0, length)}...${str.substring(str.length - length)}`;
 }
 
-var __async$d = (__this, __arguments, generator) => {
+var __async$e = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -2656,7 +2667,7 @@ var __async$d = (__this, __arguments, generator) => {
   });
 };
 function multicall(Multicall2, calls) {
-  return __async$d(this, null, function* () {
+  return __async$e(this, null, function* () {
     const calldata = calls.map((call) => {
       var _a, _b, _c;
       const target = ((_a = call.contract) == null ? void 0 : _a.target) || call.address;
@@ -2679,29 +2690,29 @@ function multicall(Multicall2, calls) {
   });
 }
 
-var __defProp$3 = Object.defineProperty;
-var __defProps$3 = Object.defineProperties;
-var __getOwnPropDescs$3 = Object.getOwnPropertyDescriptors;
-var __getOwnPropSymbols$3 = Object.getOwnPropertySymbols;
+var __defProp$5 = Object.defineProperty;
+var __defProps$4 = Object.defineProperties;
+var __getOwnPropDescs$4 = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols$5 = Object.getOwnPropertySymbols;
 var __getProtoOf$1 = Object.getPrototypeOf;
-var __hasOwnProp$3 = Object.prototype.hasOwnProperty;
-var __propIsEnum$3 = Object.prototype.propertyIsEnumerable;
+var __hasOwnProp$5 = Object.prototype.hasOwnProperty;
+var __propIsEnum$5 = Object.prototype.propertyIsEnumerable;
 var __reflectGet$1 = Reflect.get;
-var __defNormalProp$3 = (obj, key, value) => key in obj ? __defProp$3(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues$3 = (a, b) => {
+var __defNormalProp$5 = (obj, key, value) => key in obj ? __defProp$5(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues$5 = (a, b) => {
   for (var prop in b || (b = {}))
-    if (__hasOwnProp$3.call(b, prop))
-      __defNormalProp$3(a, prop, b[prop]);
-  if (__getOwnPropSymbols$3)
-    for (var prop of __getOwnPropSymbols$3(b)) {
-      if (__propIsEnum$3.call(b, prop))
-        __defNormalProp$3(a, prop, b[prop]);
+    if (__hasOwnProp$5.call(b, prop))
+      __defNormalProp$5(a, prop, b[prop]);
+  if (__getOwnPropSymbols$5)
+    for (var prop of __getOwnPropSymbols$5(b)) {
+      if (__propIsEnum$5.call(b, prop))
+        __defNormalProp$5(a, prop, b[prop]);
     }
   return a;
 };
-var __spreadProps$3 = (a, b) => __defProps$3(a, __getOwnPropDescs$3(b));
+var __spreadProps$4 = (a, b) => __defProps$4(a, __getOwnPropDescs$4(b));
 var __superGet$1 = (cls, obj, key) => __reflectGet$1(__getProtoOf$1(cls), key, obj);
-var __async$c = (__this, __arguments, generator) => {
+var __async$d = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -2747,7 +2758,7 @@ function getHttpAgent({
   }
 }
 function fetchData(_0) {
-  return __async$c(this, arguments, function* (url, options = {}) {
+  return __async$d(this, arguments, function* (url, options = {}) {
     var _a, _b, _c;
     const MAX_RETRY = (_a = options.maxRetry) != null ? _a : 3;
     const RETRY_ON = (_b = options.retryOn) != null ? _b : 500;
@@ -2839,7 +2850,7 @@ function fetchData(_0) {
     throw errorObject;
   });
 }
-const fetchGetUrlFunc = (options = {}) => (req, _signal) => __async$c(void 0, null, function* () {
+const fetchGetUrlFunc = (options = {}) => (req, _signal) => __async$d(void 0, null, function* () {
   let signal;
   if (_signal) {
     const controller = new AbortController();
@@ -2848,7 +2859,7 @@ const fetchGetUrlFunc = (options = {}) => (req, _signal) => __async$c(void 0, nu
       controller.abort();
     });
   }
-  const init = __spreadProps$3(__spreadValues$3({}, options), {
+  const init = __spreadProps$4(__spreadValues$5({}, options), {
     method: req.method || "POST",
     headers: req.headers,
     body: req.body || void 0,
@@ -2873,7 +2884,7 @@ const oracleMapper = /* @__PURE__ */ new Map();
 const multicallMapper = /* @__PURE__ */ new Map();
 function getGasOraclePlugin(networkKey, fetchOptions) {
   const gasStationApi = (fetchOptions == null ? void 0 : fetchOptions.gasStationApi) || "https://gasstation.polygon.technology/v2";
-  return new FetchUrlFeeDataNetworkPlugin(gasStationApi, (fetchFeeData, provider, request) => __async$c(this, null, function* () {
+  return new FetchUrlFeeDataNetworkPlugin(gasStationApi, (fetchFeeData, provider, request) => __async$d(this, null, function* () {
     if (!oracleMapper.has(networkKey)) {
       oracleMapper.set(networkKey, GasPriceOracle__factory.connect(fetchOptions == null ? void 0 : fetchOptions.gasPriceOracle, provider));
     }
@@ -2932,7 +2943,7 @@ function getGasOraclePlugin(networkKey, fetchOptions) {
   }));
 }
 function getProvider(rpcUrl, fetchOptions) {
-  return __async$c(this, null, function* () {
+  return __async$d(this, null, function* () {
     const fetchReq = new FetchRequest(rpcUrl);
     fetchReq.getUrlFunc = fetchGetUrlFunc(fetchOptions);
     const _staticNetwork = yield new JsonRpcProvider(fetchReq).getNetwork();
@@ -2982,7 +2993,7 @@ function getProviderWithNetId(netId, rpcUrl, config, fetchOptions) {
   provider.pollingInterval = (fetchOptions == null ? void 0 : fetchOptions.pollingInterval) || pollInterval * 1e3;
   return provider;
 }
-const populateTransaction = (signer, tx) => __async$c(void 0, null, function* () {
+const populateTransaction = (signer, tx) => __async$d(void 0, null, function* () {
   const provider = signer.provider;
   if (!tx.from) {
     tx.from = signer.address;
@@ -2991,7 +3002,7 @@ const populateTransaction = (signer, tx) => __async$c(void 0, null, function* ()
     throw new Error(errMsg);
   }
   const [feeData, nonce] = yield Promise.all([
-    (() => __async$c(void 0, null, function* () {
+    (() => __async$d(void 0, null, function* () {
       if (tx.maxFeePerGas && tx.maxPriorityFeePerGas) {
         return new FeeData(null, BigInt(tx.maxFeePerGas), BigInt(tx.maxPriorityFeePerGas));
       }
@@ -3013,7 +3024,7 @@ const populateTransaction = (signer, tx) => __async$c(void 0, null, function* ()
         );
       }
     }))(),
-    (() => __async$c(void 0, null, function* () {
+    (() => __async$d(void 0, null, function* () {
       if (tx.nonce) {
         return tx.nonce;
       }
@@ -3043,7 +3054,7 @@ const populateTransaction = (signer, tx) => __async$c(void 0, null, function* ()
     delete tx.maxFeePerGas;
     delete tx.maxPriorityFeePerGas;
   }
-  tx.gasLimit = tx.gasLimit || (yield (() => __async$c(void 0, null, function* () {
+  tx.gasLimit = tx.gasLimit || (yield (() => __async$d(void 0, null, function* () {
     try {
       const gasLimit = yield provider.estimateGas(tx);
       return gasLimit === BigInt(21e3) ? gasLimit : gasLimit * (BigInt(1e4) + BigInt(signer.gasLimitBump)) / BigInt(1e4);
@@ -3071,7 +3082,7 @@ class TornadoWallet extends Wallet {
     return new TornadoWallet(privateKey, provider, options);
   }
   populateTransaction(tx) {
-    return __async$c(this, null, function* () {
+    return __async$d(this, null, function* () {
       const txObject = yield populateTransaction(this, tx);
       this.nonce = txObject.nonce;
       return __superGet$1(TornadoWallet.prototype, this, "populateTransaction").call(this, txObject);
@@ -3087,7 +3098,7 @@ class TornadoVoidSigner extends VoidSigner {
     this.bumpNonce = bumpNonce != null ? bumpNonce : false;
   }
   populateTransaction(tx) {
-    return __async$c(this, null, function* () {
+    return __async$d(this, null, function* () {
       const txObject = yield populateTransaction(this, tx);
       this.nonce = txObject.nonce;
       return __superGet$1(TornadoVoidSigner.prototype, this, "populateTransaction").call(this, txObject);
@@ -3103,7 +3114,7 @@ class TornadoRpcSigner extends JsonRpcSigner {
     this.bumpNonce = bumpNonce != null ? bumpNonce : false;
   }
   sendUncheckedTransaction(tx) {
-    return __async$c(this, null, function* () {
+    return __async$d(this, null, function* () {
       return __superGet$1(TornadoRpcSigner.prototype, this, "sendUncheckedTransaction").call(this, yield populateTransaction(this, tx));
     });
   }
@@ -3114,7 +3125,7 @@ class TornadoBrowserProvider extends BrowserProvider {
     this.options = options;
   }
   getSigner(address) {
-    return __async$c(this, null, function* () {
+    return __async$d(this, null, function* () {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i;
       const signerAddress = (yield __superGet$1(TornadoBrowserProvider.prototype, this, "getSigner").call(this, address)).address;
       if (((_a = this.options) == null ? void 0 : _a.webChainId) && ((_b = this.options) == null ? void 0 : _b.connectWallet) && Number(yield __superGet$1(TornadoBrowserProvider.prototype, this, "send").call(this, "eth_chainId", [])) !== Number((_c = this.options) == null ? void 0 : _c.webChainId)) {
@@ -3237,6 +3248,22 @@ const GET_NOTE_ACCOUNTS = `
     }
   }
 `;
+const GET_ECHO_EVENTS = `
+  query getNoteAccounts($first: Int, $fromBlock: Int) {
+    noteAccounts(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      id
+      blockNumber
+      address
+      encryptedAccount
+    }
+    _meta {
+      block {
+        number
+      }
+      hasIndexingErrors
+    }
+  }
+`;
 const GET_ENCRYPTED_NOTES = `
   query getEncryptedNotes($first: Int, $fromBlock: Int) {
     encryptedNotes(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
@@ -3253,27 +3280,80 @@ const GET_ENCRYPTED_NOTES = `
     }
   }
 `;
+const GET_GOVERNANCE_EVENTS = `
+  query getGovernanceEvents($first: Int, $fromBlock: Int) {
+    proposals(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      proposalId
+      proposer
+      target
+      startTime
+      endTime
+      description
+    }
+    votes(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      proposalId
+      voter
+      support
+      votes
+      from
+      input
+    }
+    delegates(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      account
+      delegateTo
+    }
+    undelegates(first: $first, orderBy: blockNumber, orderDirection: asc, where: { blockNumber_gte: $fromBlock }) {
+      blockNumber
+      logIndex
+      transactionHash
+      account
+      delegateFrom
+    }
+    _meta {
+      block {
+        number
+      }
+      hasIndexingErrors
+    }
+  }
+`;
+const GET_GOVERNANCE_APY = `
+  stakeDailyBurns(first: 30, orderBy: date, orderDirection: desc) {
+    id
+    date
+    dailyAmountBurned
+  }
+`;
 
-var __defProp$2 = Object.defineProperty;
-var __defProps$2 = Object.defineProperties;
-var __getOwnPropDescs$2 = Object.getOwnPropertyDescriptors;
-var __getOwnPropSymbols$2 = Object.getOwnPropertySymbols;
-var __hasOwnProp$2 = Object.prototype.hasOwnProperty;
-var __propIsEnum$2 = Object.prototype.propertyIsEnumerable;
-var __defNormalProp$2 = (obj, key, value) => key in obj ? __defProp$2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues$2 = (a, b) => {
+var __defProp$4 = Object.defineProperty;
+var __defProps$3 = Object.defineProperties;
+var __getOwnPropDescs$3 = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols$4 = Object.getOwnPropertySymbols;
+var __hasOwnProp$4 = Object.prototype.hasOwnProperty;
+var __propIsEnum$4 = Object.prototype.propertyIsEnumerable;
+var __defNormalProp$4 = (obj, key, value) => key in obj ? __defProp$4(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues$4 = (a, b) => {
   for (var prop in b || (b = {}))
-    if (__hasOwnProp$2.call(b, prop))
-      __defNormalProp$2(a, prop, b[prop]);
-  if (__getOwnPropSymbols$2)
-    for (var prop of __getOwnPropSymbols$2(b)) {
-      if (__propIsEnum$2.call(b, prop))
-        __defNormalProp$2(a, prop, b[prop]);
+    if (__hasOwnProp$4.call(b, prop))
+      __defNormalProp$4(a, prop, b[prop]);
+  if (__getOwnPropSymbols$4)
+    for (var prop of __getOwnPropSymbols$4(b)) {
+      if (__propIsEnum$4.call(b, prop))
+        __defNormalProp$4(a, prop, b[prop]);
     }
   return a;
 };
-var __spreadProps$2 = (a, b) => __defProps$2(a, __getOwnPropDescs$2(b));
-var __async$b = (__this, __arguments, generator) => {
+var __spreadProps$3 = (a, b) => __defProps$3(a, __getOwnPropDescs$3(b));
+var __async$c = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -3296,7 +3376,7 @@ var __async$b = (__this, __arguments, generator) => {
 const isEmptyArray = (arr) => !Array.isArray(arr) || !arr.length;
 const first = 1e3;
 function queryGraph(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     query,
@@ -3305,7 +3385,7 @@ function queryGraph(_0) {
   }) {
     var _a;
     const graphUrl = `${graphApi}/subgraphs/name/${subgraphName}`;
-    const { data, errors } = yield fetchData(graphUrl, __spreadProps$2(__spreadValues$2({}, fetchDataOptions2), {
+    const { data, errors } = yield fetchData(graphUrl, __spreadProps$3(__spreadValues$4({}, fetchDataOptions2), {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -3325,7 +3405,7 @@ function queryGraph(_0) {
   });
 }
 function getStatistic(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     currency,
@@ -3372,7 +3452,7 @@ function getStatistic(_0) {
   });
 }
 function getMeta(_0) {
-  return __async$b(this, arguments, function* ({ graphApi, subgraphName, fetchDataOptions: fetchDataOptions2 }) {
+  return __async$c(this, arguments, function* ({ graphApi, subgraphName, fetchDataOptions: fetchDataOptions2 }) {
     try {
       const {
         _meta: {
@@ -3417,7 +3497,7 @@ function getRegisters({
   });
 }
 function getAllRegisters(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     fromBlock,
@@ -3506,7 +3586,7 @@ function getDeposits({
   });
 }
 function getAllDeposits(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     currency,
@@ -3603,7 +3683,7 @@ function getWithdrawals({
   });
 }
 function getAllWithdrawals(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     currency,
@@ -3679,7 +3759,7 @@ function getAllWithdrawals(_0) {
   });
 }
 function getNoteAccounts(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     address,
@@ -3696,7 +3776,7 @@ function getNoteAccounts(_0) {
         subgraphName,
         query: GET_NOTE_ACCOUNTS,
         variables: {
-          address
+          address: address.toLowerCase()
         },
         fetchDataOptions: fetchDataOptions2
       });
@@ -3710,6 +3790,95 @@ function getNoteAccounts(_0) {
       return {
         events: [],
         lastSyncBlock: null
+      };
+    }
+  });
+}
+function getGraphEchoEvents({
+  graphApi,
+  subgraphName,
+  fromBlock,
+  fetchDataOptions: fetchDataOptions2
+}) {
+  return queryGraph({
+    graphApi,
+    subgraphName,
+    query: GET_ECHO_EVENTS,
+    variables: {
+      first,
+      fromBlock
+    },
+    fetchDataOptions: fetchDataOptions2
+  });
+}
+function getAllGraphEchoEvents(_0) {
+  return __async$c(this, arguments, function* ({
+    graphApi,
+    subgraphName,
+    fromBlock,
+    fetchDataOptions: fetchDataOptions2,
+    onProgress
+  }) {
+    try {
+      const events = [];
+      let lastSyncBlock = fromBlock;
+      while (true) {
+        let {
+          noteAccounts: result2,
+          _meta: {
+            // eslint-disable-next-line prefer-const
+            block: { number: currentBlock }
+          }
+        } = yield getGraphEchoEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions: fetchDataOptions2 });
+        lastSyncBlock = currentBlock;
+        if (isEmptyArray(result2)) {
+          break;
+        }
+        const [firstEvent] = result2;
+        const [lastEvent2] = result2.slice(-1);
+        if (typeof onProgress === "function") {
+          onProgress({
+            type: "EchoEvents",
+            fromBlock: Number(firstEvent.blockNumber),
+            toBlock: Number(lastEvent2.blockNumber),
+            count: result2.length
+          });
+        }
+        if (result2.length < 900) {
+          events.push(...result2);
+          break;
+        }
+        result2 = result2.filter(({ blockNumber }) => blockNumber !== lastEvent2.blockNumber);
+        fromBlock = Number(lastEvent2.blockNumber);
+        events.push(...result2);
+      }
+      if (!events.length) {
+        return {
+          events: [],
+          lastSyncBlock
+        };
+      }
+      const result = events.map((e) => {
+        const [transactionHash, logIndex] = e.id.split("-");
+        return {
+          blockNumber: Number(e.blockNumber),
+          logIndex: Number(logIndex),
+          transactionHash,
+          address: getAddress(e.address),
+          encryptedAccount: e.encryptedAccount
+        };
+      });
+      const [lastEvent] = result.slice(-1);
+      return {
+        events: result,
+        lastSyncBlock: lastEvent && lastEvent.blockNumber >= lastSyncBlock ? lastEvent.blockNumber + 1 : lastSyncBlock
+      };
+    } catch (err) {
+      console.log("Error from getAllGraphEchoEvents query");
+      console.log(err);
+      return {
+        events: [],
+        lastSyncBlock: fromBlock
       };
     }
   });
@@ -3732,7 +3901,7 @@ function getEncryptedNotes({
   });
 }
 function getAllEncryptedNotes(_0) {
-  return __async$b(this, arguments, function* ({
+  return __async$c(this, arguments, function* ({
     graphApi,
     subgraphName,
     fromBlock,
@@ -3799,11 +3968,160 @@ function getAllEncryptedNotes(_0) {
     }
   });
 }
+function getGovernanceEvents({
+  graphApi,
+  subgraphName,
+  fromBlock,
+  fetchDataOptions: fetchDataOptions2
+}) {
+  return queryGraph({
+    graphApi,
+    subgraphName,
+    query: GET_GOVERNANCE_EVENTS,
+    variables: {
+      first,
+      fromBlock
+    },
+    fetchDataOptions: fetchDataOptions2
+  });
+}
+function getAllGovernanceEvents(_0) {
+  return __async$c(this, arguments, function* ({
+    graphApi,
+    subgraphName,
+    fromBlock,
+    fetchDataOptions: fetchDataOptions2,
+    onProgress
+  }) {
+    try {
+      const result = [];
+      let lastSyncBlock = fromBlock;
+      while (true) {
+        const {
+          proposals,
+          votes,
+          delegates,
+          undelegates,
+          _meta: {
+            block: { number: currentBlock }
+          }
+        } = yield getGovernanceEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions: fetchDataOptions2 });
+        lastSyncBlock = currentBlock;
+        const eventsLength = proposals.length + votes.length + delegates.length + undelegates.length;
+        if (eventsLength === 0) {
+          break;
+        }
+        const formattedProposals = proposals.map(
+          ({ blockNumber, logIndex, transactionHash, proposalId, proposer, target, startTime, endTime, description }) => {
+            return {
+              blockNumber: Number(blockNumber),
+              logIndex: Number(logIndex),
+              transactionHash,
+              event: "ProposalCreated",
+              id: Number(proposalId),
+              proposer: getAddress(proposer),
+              target: getAddress(target),
+              startTime: Number(startTime),
+              endTime: Number(endTime),
+              description
+            };
+          }
+        );
+        const formattedVotes = votes.map(
+          ({ blockNumber, logIndex, transactionHash, proposalId, voter, support, votes: votes2, from, input }) => {
+            if (!input || input.length > 2048) {
+              input = "";
+            }
+            return {
+              blockNumber: Number(blockNumber),
+              logIndex: Number(logIndex),
+              transactionHash,
+              event: "Voted",
+              proposalId: Number(proposalId),
+              voter: getAddress(voter),
+              support,
+              votes: votes2,
+              from: getAddress(from),
+              input
+            };
+          }
+        );
+        const formattedDelegates = delegates.map(
+          ({ blockNumber, logIndex, transactionHash, account, delegateTo }) => {
+            return {
+              blockNumber: Number(blockNumber),
+              logIndex: Number(logIndex),
+              transactionHash,
+              event: "Delegated",
+              account: getAddress(account),
+              delegateTo: getAddress(delegateTo)
+            };
+          }
+        );
+        const formattedUndelegates = undelegates.map(
+          ({ blockNumber, logIndex, transactionHash, account, delegateFrom }) => {
+            return {
+              blockNumber: Number(blockNumber),
+              logIndex: Number(logIndex),
+              transactionHash,
+              event: "Undelegated",
+              account: getAddress(account),
+              delegateFrom: getAddress(delegateFrom)
+            };
+          }
+        );
+        let formattedEvents = [
+          ...formattedProposals,
+          ...formattedVotes,
+          ...formattedDelegates,
+          ...formattedUndelegates
+        ].sort((a, b) => {
+          if (a.blockNumber === b.blockNumber) {
+            return a.logIndex - b.logIndex;
+          }
+          return a.blockNumber - b.blockNumber;
+        });
+        if (eventsLength < 900) {
+          result.push(...formattedEvents);
+          break;
+        }
+        const [firstEvent] = formattedEvents;
+        const [lastEvent2] = formattedEvents.slice(-1);
+        if (typeof onProgress === "function") {
+          onProgress({
+            type: "Governance Events",
+            fromBlock: Number(firstEvent.blockNumber),
+            toBlock: Number(lastEvent2.blockNumber),
+            count: eventsLength
+          });
+        }
+        formattedEvents = formattedEvents.filter(({ blockNumber }) => blockNumber !== lastEvent2.blockNumber);
+        fromBlock = Number(lastEvent2.blockNumber);
+        result.push(...formattedEvents);
+      }
+      const [lastEvent] = result.slice(-1);
+      return {
+        events: result,
+        lastSyncBlock: lastEvent && lastEvent.blockNumber >= lastSyncBlock ? lastEvent.blockNumber + 1 : lastSyncBlock
+      };
+    } catch (err) {
+      console.log("Error from getAllGovernance query");
+      console.log(err);
+      return {
+        events: [],
+        lastSyncBlock: fromBlock
+      };
+    }
+  });
+}
 
 var graph = /*#__PURE__*/Object.freeze({
   __proto__: null,
   GET_DEPOSITS: GET_DEPOSITS,
+  GET_ECHO_EVENTS: GET_ECHO_EVENTS,
   GET_ENCRYPTED_NOTES: GET_ENCRYPTED_NOTES,
+  GET_GOVERNANCE_APY: GET_GOVERNANCE_APY,
+  GET_GOVERNANCE_EVENTS: GET_GOVERNANCE_EVENTS,
   GET_NOTE_ACCOUNTS: GET_NOTE_ACCOUNTS,
   GET_REGISTERED: GET_REGISTERED,
   GET_STATISTIC: GET_STATISTIC,
@@ -3811,10 +4129,14 @@ var graph = /*#__PURE__*/Object.freeze({
   _META: _META,
   getAllDeposits: getAllDeposits,
   getAllEncryptedNotes: getAllEncryptedNotes,
+  getAllGovernanceEvents: getAllGovernanceEvents,
+  getAllGraphEchoEvents: getAllGraphEchoEvents,
   getAllRegisters: getAllRegisters,
   getAllWithdrawals: getAllWithdrawals,
   getDeposits: getDeposits,
   getEncryptedNotes: getEncryptedNotes,
+  getGovernanceEvents: getGovernanceEvents,
+  getGraphEchoEvents: getGraphEchoEvents,
   getMeta: getMeta,
   getNoteAccounts: getNoteAccounts,
   getRegisters: getRegisters,
@@ -3823,7 +4145,7 @@ var graph = /*#__PURE__*/Object.freeze({
   queryGraph: queryGraph
 });
 
-var __async$a = (__this, __arguments, generator) => {
+var __async$b = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -3862,7 +4184,7 @@ class BatchBlockService {
     this.retryOn = retryOn;
   }
   getBlock(blockTag) {
-    return __async$a(this, null, function* () {
+    return __async$b(this, null, function* () {
       const blockObject = yield this.provider.getBlock(blockTag);
       if (!blockObject) {
         const errMsg = `No block for ${blockTag}`;
@@ -3872,9 +4194,9 @@ class BatchBlockService {
     });
   }
   createBatchRequest(batchArray) {
-    return batchArray.map((blocks, index) => __async$a(this, null, function* () {
+    return batchArray.map((blocks, index) => __async$b(this, null, function* () {
       yield sleep(20 * index);
-      return (() => __async$a(this, null, function* () {
+      return (() => __async$b(this, null, function* () {
         let retries = 0;
         let err;
         while (!this.shouldRetry && retries === 0 || this.shouldRetry && retries < this.retryMax) {
@@ -3891,7 +4213,7 @@ class BatchBlockService {
     }));
   }
   getBatchBlocks(blocks) {
-    return __async$a(this, null, function* () {
+    return __async$b(this, null, function* () {
       let blockCount = 0;
       const results = [];
       for (const chunks of chunk(blocks, this.concurrencySize * this.batchSize)) {
@@ -3929,7 +4251,7 @@ class BatchTransactionService {
     this.retryOn = retryOn;
   }
   getTransaction(txHash) {
-    return __async$a(this, null, function* () {
+    return __async$b(this, null, function* () {
       const txObject = yield this.provider.getTransaction(txHash);
       if (!txObject) {
         const errMsg = `No transaction for ${txHash}`;
@@ -3939,9 +4261,9 @@ class BatchTransactionService {
     });
   }
   createBatchRequest(batchArray) {
-    return batchArray.map((txs, index) => __async$a(this, null, function* () {
+    return batchArray.map((txs, index) => __async$b(this, null, function* () {
       yield sleep(20 * index);
-      return (() => __async$a(this, null, function* () {
+      return (() => __async$b(this, null, function* () {
         let retries = 0;
         let err;
         while (!this.shouldRetry && retries === 0 || this.shouldRetry && retries < this.retryMax) {
@@ -3958,7 +4280,7 @@ class BatchTransactionService {
     }));
   }
   getBatchTransactions(txs) {
-    return __async$a(this, null, function* () {
+    return __async$b(this, null, function* () {
       let txCount = 0;
       const results = [];
       for (const chunks of chunk(txs, this.concurrencySize * this.batchSize)) {
@@ -3994,7 +4316,7 @@ class BatchEventsService {
     this.retryOn = retryOn;
   }
   getPastEvents(_0) {
-    return __async$a(this, arguments, function* ({ fromBlock, toBlock, type }) {
+    return __async$b(this, arguments, function* ({ fromBlock, toBlock, type }) {
       let err;
       let retries = 0;
       while (!this.shouldRetry && retries === 0 || this.shouldRetry && retries < this.retryMax) {
@@ -4014,13 +4336,13 @@ class BatchEventsService {
     });
   }
   createBatchRequest(batchArray) {
-    return batchArray.map((event, index) => __async$a(this, null, function* () {
+    return batchArray.map((event, index) => __async$b(this, null, function* () {
       yield sleep(20 * index);
       return this.getPastEvents(event);
     }));
   }
   getBatchEvents(_0) {
-    return __async$a(this, arguments, function* ({ fromBlock, toBlock, type = "*" }) {
+    return __async$b(this, arguments, function* ({ fromBlock, toBlock, type = "*" }) {
       if (!toBlock) {
         toBlock = yield this.provider.getBlockNumber();
       }
@@ -4051,29 +4373,29 @@ class BatchEventsService {
   }
 }
 
-var __defProp$1 = Object.defineProperty;
-var __defProps$1 = Object.defineProperties;
-var __getOwnPropDescs$1 = Object.getOwnPropertyDescriptors;
-var __getOwnPropSymbols$1 = Object.getOwnPropertySymbols;
+var __defProp$3 = Object.defineProperty;
+var __defProps$2 = Object.defineProperties;
+var __getOwnPropDescs$2 = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols$3 = Object.getOwnPropertySymbols;
 var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp$1 = Object.prototype.hasOwnProperty;
-var __propIsEnum$1 = Object.prototype.propertyIsEnumerable;
+var __hasOwnProp$3 = Object.prototype.hasOwnProperty;
+var __propIsEnum$3 = Object.prototype.propertyIsEnumerable;
 var __reflectGet = Reflect.get;
-var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues$1 = (a, b) => {
+var __defNormalProp$3 = (obj, key, value) => key in obj ? __defProp$3(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues$3 = (a, b) => {
   for (var prop in b || (b = {}))
-    if (__hasOwnProp$1.call(b, prop))
-      __defNormalProp$1(a, prop, b[prop]);
-  if (__getOwnPropSymbols$1)
-    for (var prop of __getOwnPropSymbols$1(b)) {
-      if (__propIsEnum$1.call(b, prop))
-        __defNormalProp$1(a, prop, b[prop]);
+    if (__hasOwnProp$3.call(b, prop))
+      __defNormalProp$3(a, prop, b[prop]);
+  if (__getOwnPropSymbols$3)
+    for (var prop of __getOwnPropSymbols$3(b)) {
+      if (__propIsEnum$3.call(b, prop))
+        __defNormalProp$3(a, prop, b[prop]);
     }
   return a;
 };
-var __spreadProps$1 = (a, b) => __defProps$1(a, __getOwnPropDescs$1(b));
+var __spreadProps$2 = (a, b) => __defProps$2(a, __getOwnPropDescs$2(b));
 var __superGet = (cls, obj, key) => __reflectGet(__getProtoOf(cls), key, obj);
-var __async$9 = (__this, __arguments, generator) => {
+var __async$a = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -4148,7 +4470,7 @@ class BaseEventsService {
   }
   /* eslint-enable @typescript-eslint/no-unused-vars */
   formatEvents(events) {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       return yield new Promise((resolve) => resolve(events));
     });
   }
@@ -4156,7 +4478,7 @@ class BaseEventsService {
    * Get saved or cached events
    */
   getEventsFromDB() {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       return {
         events: [],
         lastBlock: null
@@ -4164,7 +4486,7 @@ class BaseEventsService {
     });
   }
   getEventsFromCache() {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       return {
         events: [],
         lastBlock: null
@@ -4172,7 +4494,7 @@ class BaseEventsService {
     });
   }
   getSavedEvents() {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       let cachedEvents = yield this.getEventsFromDB();
       if (!cachedEvents || !cachedEvents.events.length) {
         cachedEvents = yield this.getEventsFromCache();
@@ -4184,7 +4506,7 @@ class BaseEventsService {
    * Get latest events
    */
   getEventsFromGraph(_0) {
-    return __async$9(this, arguments, function* ({
+    return __async$a(this, arguments, function* ({
       fromBlock,
       methodName = ""
     }) {
@@ -4194,7 +4516,7 @@ class BaseEventsService {
           lastBlock: fromBlock
         };
       }
-      const { events, lastSyncBlock } = yield graph[methodName || this.getGraphMethod()](__spreadValues$1({
+      const { events, lastSyncBlock } = yield graph[methodName || this.getGraphMethod()](__spreadValues$3({
         fromBlock
       }, this.getGraphParams()));
       return {
@@ -4204,7 +4526,7 @@ class BaseEventsService {
     });
   }
   getEventsFromRpc(_0) {
-    return __async$9(this, arguments, function* ({
+    return __async$a(this, arguments, function* ({
       fromBlock,
       toBlock
     }) {
@@ -4242,7 +4564,7 @@ class BaseEventsService {
     });
   }
   getLatestEvents(_0) {
-    return __async$9(this, arguments, function* ({ fromBlock }) {
+    return __async$a(this, arguments, function* ({ fromBlock }) {
       const allEvents = [];
       const graphEvents = yield this.getEventsFromGraph({ fromBlock });
       const lastSyncBlock = graphEvents.lastBlock && graphEvents.lastBlock >= fromBlock ? graphEvents.lastBlock : fromBlock;
@@ -4264,14 +4586,14 @@ class BaseEventsService {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   saveEvents(_0) {
-    return __async$9(this, arguments, function* ({ events, lastBlock }) {
+    return __async$a(this, arguments, function* ({ events, lastBlock }) {
     });
   }
   /**
    * Trigger saving and receiving latest events
    */
   updateEvents() {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       const savedEvents = yield this.getSavedEvents();
       let fromBlock = this.deployedBlock;
       if (savedEvents && savedEvents.lastBlock) {
@@ -4345,7 +4667,7 @@ class BaseDepositsService extends BaseEventsService {
     };
   }
   formatEvents(events) {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       const type = this.getType().toLowerCase();
       if (type === DEPOSIT) {
         const formattedEvents = events.map(({ blockNumber, index: logIndex, transactionHash, args }) => {
@@ -4364,7 +4686,7 @@ class BaseDepositsService extends BaseEventsService {
         ]);
         return formattedEvents.map((event) => {
           const { from } = txs.find(({ hash }) => hash === event.transactionHash);
-          return __spreadProps$1(__spreadValues$1({}, event), {
+          return __spreadProps$2(__spreadValues$3({}, event), {
             from
           });
         });
@@ -4385,7 +4707,7 @@ class BaseDepositsService extends BaseEventsService {
         ]);
         return formattedEvents.map((event) => {
           const { timestamp } = blocks.find(({ number }) => number === event.blockNumber);
-          return __spreadProps$1(__spreadValues$1({}, event), {
+          return __spreadProps$2(__spreadValues$3({}, event), {
             timestamp
           });
         });
@@ -4400,6 +4722,57 @@ class BaseDepositsService extends BaseEventsService {
         throw new Error(errMsg);
       }
     }
+  }
+}
+class BaseEchoService extends BaseEventsService {
+  constructor({
+    netId,
+    provider,
+    graphApi,
+    subgraphName,
+    Echoer,
+    deployedBlock,
+    fetchDataOptions: fetchDataOptions2
+  }) {
+    super({ netId, provider, graphApi, subgraphName, contract: Echoer, deployedBlock, fetchDataOptions: fetchDataOptions2 });
+  }
+  getInstanceName() {
+    return `echo_${this.netId}`;
+  }
+  getType() {
+    return "Echo";
+  }
+  getGraphMethod() {
+    return "getAllGraphEchoEvents";
+  }
+  formatEvents(events) {
+    return __async$a(this, null, function* () {
+      return events.map(({ blockNumber, index: logIndex, transactionHash, args }) => {
+        const { who, data } = args;
+        if (who && data) {
+          const eventObjects = {
+            blockNumber,
+            logIndex,
+            transactionHash
+          };
+          return __spreadProps$2(__spreadValues$3({}, eventObjects), {
+            address: who,
+            encryptedAccount: data
+          });
+        }
+      }).filter((e) => e);
+    });
+  }
+  getEventsFromGraph(_0) {
+    return __async$a(this, arguments, function* ({ fromBlock }) {
+      if (!this.graphApi || this.graphApi.includes("api.thegraph.com")) {
+        return {
+          events: [],
+          lastBlock: fromBlock
+        };
+      }
+      return __superGet(BaseEchoService.prototype, this, "getEventsFromGraph").call(this, { fromBlock });
+    });
   }
 }
 class BaseEncryptedNotesService extends BaseEventsService {
@@ -4424,7 +4797,7 @@ class BaseEncryptedNotesService extends BaseEventsService {
     return "getAllEncryptedNotes";
   }
   formatEvents(events) {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       return events.map(({ blockNumber, index: logIndex, transactionHash, args }) => {
         const { encryptedNote } = args;
         if (encryptedNote) {
@@ -4433,7 +4806,7 @@ class BaseEncryptedNotesService extends BaseEventsService {
             logIndex,
             transactionHash
           };
-          return __spreadProps$1(__spreadValues$1({}, eventObjects), {
+          return __spreadProps$2(__spreadValues$3({}, eventObjects), {
             encryptedNote
           });
         }
@@ -4464,11 +4837,15 @@ class BaseGovernanceService extends BaseEventsService {
     return "*";
   }
   getGraphMethod() {
-    return "governanceEvents";
+    return "getAllGovernanceEvents";
   }
   formatEvents(events) {
-    return __async$9(this, null, function* () {
-      const formattedEvents = events.map(({ blockNumber, index: logIndex, transactionHash, args, eventName: event }) => {
+    return __async$a(this, null, function* () {
+      const proposalEvents = [];
+      const votedEvents = [];
+      const delegatedEvents = [];
+      const undelegatedEvents = [];
+      events.forEach(({ blockNumber, index: logIndex, transactionHash, args, eventName: event }) => {
         const eventObjects = {
           blockNumber,
           logIndex,
@@ -4477,60 +4854,61 @@ class BaseGovernanceService extends BaseEventsService {
         };
         if (event === "ProposalCreated") {
           const { id, proposer, target, startTime, endTime, description } = args;
-          return __spreadProps$1(__spreadValues$1({}, eventObjects), {
-            id,
+          proposalEvents.push(__spreadProps$2(__spreadValues$3({}, eventObjects), {
+            id: Number(id),
             proposer,
             target,
-            startTime,
-            endTime,
+            startTime: Number(startTime),
+            endTime: Number(endTime),
             description
-          });
+          }));
         }
         if (event === "Voted") {
           const { proposalId, voter, support, votes } = args;
-          return __spreadProps$1(__spreadValues$1({}, eventObjects), {
-            proposalId,
+          votedEvents.push(__spreadProps$2(__spreadValues$3({}, eventObjects), {
+            proposalId: Number(proposalId),
             voter,
             support,
-            votes
-          });
+            votes,
+            from: "",
+            input: ""
+          }));
         }
         if (event === "Delegated") {
           const { account, to: delegateTo } = args;
-          return __spreadProps$1(__spreadValues$1({}, eventObjects), {
+          delegatedEvents.push(__spreadProps$2(__spreadValues$3({}, eventObjects), {
             account,
             delegateTo
-          });
+          }));
         }
         if (event === "Undelegated") {
           const { account, from: delegateFrom } = args;
-          return __spreadProps$1(__spreadValues$1({}, eventObjects), {
+          undelegatedEvents.push(__spreadProps$2(__spreadValues$3({}, eventObjects), {
             account,
             delegateFrom
-          });
+          }));
         }
-      }).filter((e) => e);
-      const votedEvents = formattedEvents.map((event, index) => __spreadProps$1(__spreadValues$1({}, event), { index })).filter(({ event }) => event === "Voted");
+      });
       if (votedEvents.length) {
         this.updateTransactionProgress({ percentage: 0 });
         const txs = yield this.batchTransactionService.getBatchTransactions([
           ...new Set(votedEvents.map(({ transactionHash }) => transactionHash))
         ]);
-        votedEvents.forEach((event) => {
+        votedEvents.forEach((event, index) => {
           let { data: input, from } = txs.find((t) => t.hash === event.transactionHash);
           if (!input || input.length > 2048) {
             input = "";
           }
-          formattedEvents[event.index].from = from;
-          formattedEvents[event.index].input = input;
+          votedEvents[index].from = from;
+          votedEvents[index].input = input;
         });
       }
-      return formattedEvents;
+      return [...proposalEvents, ...votedEvents, ...delegatedEvents, ...undelegatedEvents];
     });
   }
   getEventsFromGraph(_0) {
-    return __async$9(this, arguments, function* ({ fromBlock }) {
-      if (!this.graphApi || this.graphApi.includes("api.thegraph.com")) {
+    return __async$a(this, arguments, function* ({ fromBlock }) {
+      if (!this.graphApi || !this.subgraphName || this.graphApi.includes("api.thegraph.com")) {
         return {
           events: [],
           lastBlock: fromBlock
@@ -4564,14 +4942,14 @@ class BaseRegistryService extends BaseEventsService {
     return "getAllRegisters";
   }
   formatEvents(events) {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       return events.map(({ blockNumber, index: logIndex, transactionHash, args }) => {
         const eventObjects = {
           blockNumber,
           logIndex,
           transactionHash
         };
-        return __spreadProps$1(__spreadValues$1({}, eventObjects), {
+        return __spreadProps$2(__spreadValues$3({}, eventObjects), {
           ensName: args.ensName,
           relayerAddress: args.relayerAddress
         });
@@ -4579,13 +4957,13 @@ class BaseRegistryService extends BaseEventsService {
     });
   }
   fetchRelayers() {
-    return __async$9(this, null, function* () {
+    return __async$a(this, null, function* () {
       return (yield this.updateEvents()).events;
     });
   }
 }
 
-var __async$8 = (__this, __arguments, generator) => {
+var __async$9 = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -4606,7 +4984,7 @@ var __async$8 = (__this, __arguments, generator) => {
   });
 };
 function existsAsync(fileOrDir) {
-  return __async$8(this, null, function* () {
+  return __async$9(this, null, function* () {
     try {
       yield stat(fileOrDir);
       return true;
@@ -4637,27 +5015,26 @@ function unzipAsync(data) {
     });
   });
 }
-function saveEvents(_0) {
-  return __async$8(this, arguments, function* ({
-    name,
+function saveUserFile(_0) {
+  return __async$9(this, arguments, function* ({
+    fileName,
     userDirectory,
-    events
+    dataString
   }) {
-    const fileName = `${name}.json`.toLowerCase();
+    fileName = fileName.toLowerCase();
     const filePath = path.join(userDirectory, fileName);
-    const stringEvents = JSON.stringify(events, null, 2) + "\n";
     const payload = yield zipAsync({
-      [fileName]: new TextEncoder().encode(stringEvents)
+      [fileName]: new TextEncoder().encode(dataString)
     });
     if (!(yield existsAsync(userDirectory))) {
       yield mkdir(userDirectory, { recursive: true });
     }
     yield writeFile(filePath + ".zip", payload);
-    yield writeFile(filePath, stringEvents);
+    yield writeFile(filePath, dataString);
   });
 }
 function loadSavedEvents(_0) {
-  return __async$8(this, arguments, function* ({
+  return __async$9(this, arguments, function* ({
     name,
     userDirectory,
     deployedBlock
@@ -4686,7 +5063,7 @@ function loadSavedEvents(_0) {
   });
 }
 function download(_0) {
-  return __async$8(this, arguments, function* ({ name, cacheDirectory }) {
+  return __async$9(this, arguments, function* ({ name, cacheDirectory }) {
     const fileName = `${name}.json`.toLowerCase();
     const zipName = `${fileName}.zip`;
     const zipPath = path.join(cacheDirectory, zipName);
@@ -4696,7 +5073,7 @@ function download(_0) {
   });
 }
 function loadCachedEvents(_0) {
-  return __async$8(this, arguments, function* ({
+  return __async$9(this, arguments, function* ({
     name,
     cacheDirectory,
     deployedBlock
@@ -4726,7 +5103,7 @@ function loadCachedEvents(_0) {
   });
 }
 
-var __async$7 = (__this, __arguments, generator) => {
+var __async$8 = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -4811,7 +5188,7 @@ class NodeDepositsService extends BaseDepositsService {
     }
   }
   getEventsFromDB() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.userDirectory) {
         console.log(
           "Updating events for",
@@ -4842,7 +5219,7 @@ class NodeDepositsService extends BaseDepositsService {
     });
   }
   getEventsFromCache() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.cacheDirectory) {
         console.log(`cachedEvents count - ${0}`);
         console.log(`cachedEvents lastBlock - ${this.deployedBlock}
@@ -4864,7 +5241,7 @@ class NodeDepositsService extends BaseDepositsService {
     });
   }
   saveEvents(_0) {
-    return __async$7(this, arguments, function* ({ events, lastBlock }) {
+    return __async$8(this, arguments, function* ({ events, lastBlock }) {
       const instanceName = this.getInstanceName();
       console.log("\ntotalEvents count - ", events.length);
       console.log(
@@ -4885,10 +5262,136 @@ class NodeDepositsService extends BaseDepositsService {
       );
       console.log(eventTable.toString() + "\n");
       if (this.userDirectory) {
-        yield saveEvents({
-          name: instanceName,
+        yield saveUserFile({
+          fileName: instanceName + ".json",
           userDirectory: this.userDirectory,
-          events
+          dataString: JSON.stringify(events, null, 2) + "\n"
+        });
+      }
+    });
+  }
+}
+class NodeEchoService extends BaseEchoService {
+  constructor({
+    netId,
+    provider,
+    graphApi,
+    subgraphName,
+    Echoer,
+    deployedBlock,
+    fetchDataOptions,
+    cacheDirectory,
+    userDirectory
+  }) {
+    super({
+      netId,
+      provider,
+      graphApi,
+      subgraphName,
+      Echoer,
+      deployedBlock,
+      fetchDataOptions
+    });
+    this.cacheDirectory = cacheDirectory;
+    this.userDirectory = userDirectory;
+  }
+  updateEventProgress({ type, fromBlock, toBlock, count }) {
+    if (toBlock) {
+      console.log(`fromBlock - ${fromBlock}`);
+      console.log(`toBlock - ${toBlock}`);
+      if (count) {
+        console.log(`downloaded ${type} events count - ${count}`);
+        console.log("____________________________________________");
+        console.log(`Fetched ${type} events from ${fromBlock} to ${toBlock}
+`);
+      }
+    }
+  }
+  updateGraphProgress({ type, fromBlock, toBlock, count }) {
+    if (toBlock) {
+      console.log(`fromBlock - ${fromBlock}`);
+      console.log(`toBlock - ${toBlock}`);
+      if (count) {
+        console.log(`downloaded ${type} events from graph node count - ${count}`);
+        console.log("____________________________________________");
+        console.log(`Fetched ${type} events from graph node ${fromBlock} to ${toBlock}
+`);
+      }
+    }
+  }
+  getEventsFromDB() {
+    return __async$8(this, null, function* () {
+      if (!this.userDirectory) {
+        console.log(`Updating events for ${this.netId} chain echo events
+`);
+        console.log(`savedEvents count - ${0}`);
+        console.log(`savedEvents lastBlock - ${this.deployedBlock}
+`);
+        return {
+          events: [],
+          lastBlock: this.deployedBlock
+        };
+      }
+      const savedEvents = yield loadSavedEvents({
+        name: this.getInstanceName(),
+        userDirectory: this.userDirectory,
+        deployedBlock: this.deployedBlock
+      });
+      console.log(`Updating events for ${this.netId} chain echo events
+`);
+      console.log(`savedEvents count - ${savedEvents.events.length}`);
+      console.log(`savedEvents lastBlock - ${savedEvents.lastBlock}
+`);
+      return savedEvents;
+    });
+  }
+  getEventsFromCache() {
+    return __async$8(this, null, function* () {
+      if (!this.cacheDirectory) {
+        console.log(`cachedEvents count - ${0}`);
+        console.log(`cachedEvents lastBlock - ${this.deployedBlock}
+`);
+        return {
+          events: [],
+          lastBlock: this.deployedBlock
+        };
+      }
+      const cachedEvents = yield loadCachedEvents({
+        name: this.getInstanceName(),
+        cacheDirectory: this.cacheDirectory,
+        deployedBlock: this.deployedBlock
+      });
+      console.log(`cachedEvents count - ${cachedEvents.events.length}`);
+      console.log(`cachedEvents lastBlock - ${cachedEvents.lastBlock}
+`);
+      return cachedEvents;
+    });
+  }
+  saveEvents(_0) {
+    return __async$8(this, arguments, function* ({ events, lastBlock }) {
+      const instanceName = this.getInstanceName();
+      console.log("\ntotalEvents count - ", events.length);
+      console.log(
+        `totalEvents lastBlock - ${events[events.length - 1] ? events[events.length - 1].blockNumber : lastBlock}
+`
+      );
+      const eventTable = new Table();
+      eventTable.push(
+        [{ colSpan: 2, content: "Echo Accounts", hAlign: "center" }],
+        ["Network", `${this.netId} chain`],
+        ["Events", `${events.length} events`],
+        [{ colSpan: 2, content: "Latest events" }],
+        ...events.slice(events.length - 10).reverse().map(({ blockNumber }, index) => {
+          const eventIndex = events.length - index;
+          return [eventIndex, blockNumber];
+        })
+      );
+      console.log(eventTable.toString() + "\n");
+      if (this.userDirectory) {
+        yield saveUserFile({
+          fileName: instanceName + ".json",
+          userDirectory: this.userDirectory,
+          dataString: JSON.stringify(events, null, 2) + "\n"
         });
       }
     });
@@ -4943,7 +5446,7 @@ class NodeEncryptedNotesService extends BaseEncryptedNotesService {
     }
   }
   getEventsFromDB() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.userDirectory) {
         console.log(`Updating events for ${this.netId} chain encrypted events
 `);
@@ -4969,7 +5472,7 @@ class NodeEncryptedNotesService extends BaseEncryptedNotesService {
     });
   }
   getEventsFromCache() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.cacheDirectory) {
         console.log(`cachedEvents count - ${0}`);
         console.log(`cachedEvents lastBlock - ${this.deployedBlock}
@@ -4991,7 +5494,7 @@ class NodeEncryptedNotesService extends BaseEncryptedNotesService {
     });
   }
   saveEvents(_0) {
-    return __async$7(this, arguments, function* ({ events, lastBlock }) {
+    return __async$8(this, arguments, function* ({ events, lastBlock }) {
       const instanceName = this.getInstanceName();
       console.log("\ntotalEvents count - ", events.length);
       console.log(
@@ -5011,10 +5514,10 @@ class NodeEncryptedNotesService extends BaseEncryptedNotesService {
       );
       console.log(eventTable.toString() + "\n");
       if (this.userDirectory) {
-        yield saveEvents({
-          name: instanceName,
+        yield saveUserFile({
+          fileName: instanceName + ".json",
           userDirectory: this.userDirectory,
-          events
+          dataString: JSON.stringify(events, null, 2) + "\n"
         });
       }
     });
@@ -5074,7 +5577,7 @@ class NodeGovernanceService extends BaseGovernanceService {
     }
   }
   getEventsFromDB() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.userDirectory) {
         console.log(`Updating events for ${this.netId} chain governance events
 `);
@@ -5100,7 +5603,7 @@ class NodeGovernanceService extends BaseGovernanceService {
     });
   }
   getEventsFromCache() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.cacheDirectory) {
         console.log(`cachedEvents count - ${0}`);
         console.log(`cachedEvents lastBlock - ${this.deployedBlock}
@@ -5122,7 +5625,7 @@ class NodeGovernanceService extends BaseGovernanceService {
     });
   }
   saveEvents(_0) {
-    return __async$7(this, arguments, function* ({ events, lastBlock }) {
+    return __async$8(this, arguments, function* ({ events, lastBlock }) {
       const instanceName = this.getInstanceName();
       console.log("\ntotalEvents count - ", events.length);
       console.log(
@@ -5142,10 +5645,10 @@ class NodeGovernanceService extends BaseGovernanceService {
       );
       console.log(eventTable.toString() + "\n");
       if (this.userDirectory) {
-        yield saveEvents({
-          name: instanceName,
+        yield saveUserFile({
+          fileName: instanceName + ".json",
           userDirectory: this.userDirectory,
-          events
+          dataString: JSON.stringify(events, null, 2) + "\n"
         });
       }
     });
@@ -5200,7 +5703,7 @@ class NodeRegistryService extends BaseRegistryService {
     }
   }
   getEventsFromDB() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.userDirectory) {
         console.log(`Updating events for ${this.netId} chain registry events
 `);
@@ -5226,7 +5729,7 @@ class NodeRegistryService extends BaseRegistryService {
     });
   }
   getEventsFromCache() {
-    return __async$7(this, null, function* () {
+    return __async$8(this, null, function* () {
       if (!this.cacheDirectory) {
         console.log(`cachedEvents count - ${0}`);
         console.log(`cachedEvents lastBlock - ${this.deployedBlock}
@@ -5248,7 +5751,7 @@ class NodeRegistryService extends BaseRegistryService {
     });
   }
   saveEvents(_0) {
-    return __async$7(this, arguments, function* ({ events, lastBlock }) {
+    return __async$8(this, arguments, function* ({ events, lastBlock }) {
       const instanceName = this.getInstanceName();
       console.log("\ntotalEvents count - ", events.length);
       console.log(
@@ -5268,598 +5771,43 @@ class NodeRegistryService extends BaseRegistryService {
       );
       console.log(eventTable.toString() + "\n");
       if (this.userDirectory) {
-        yield saveEvents({
-          name: instanceName,
+        yield saveUserFile({
+          fileName: instanceName + ".json",
           userDirectory: this.userDirectory,
-          events
+          dataString: JSON.stringify(events, null, 2) + "\n"
         });
       }
     });
   }
 }
 
-const addressType = { type: "string", pattern: "^0x[a-fA-F0-9]{40}$" };
-const bnType = { type: "string", BN: true };
-const statusSchema = {
-  type: "object",
-  properties: {
-    rewardAccount: addressType,
-    gasPrices: {
-      type: "object",
-      properties: {
-        fast: { type: "number" },
-        additionalProperties: { type: "number" }
-      },
-      required: ["fast"]
-    },
-    netId: { type: "integer" },
-    tornadoServiceFee: { type: "number", maximum: 20, minimum: 0 },
-    latestBlock: { type: "number" },
-    version: { type: "string" },
-    health: {
-      type: "object",
-      properties: {
-        status: { const: "true" },
-        error: { type: "string" }
-      },
-      required: ["status"]
-    },
-    currentQueue: { type: "number" }
-  },
-  required: ["rewardAccount", "instances", "netId", "tornadoServiceFee", "version", "health"]
+var __defProp$2 = Object.defineProperty;
+var __getOwnPropSymbols$2 = Object.getOwnPropertySymbols;
+var __hasOwnProp$2 = Object.prototype.hasOwnProperty;
+var __propIsEnum$2 = Object.prototype.propertyIsEnumerable;
+var __defNormalProp$2 = (obj, key, value) => key in obj ? __defProp$2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues$2 = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp$2.call(b, prop))
+      __defNormalProp$2(a, prop, b[prop]);
+  if (__getOwnPropSymbols$2)
+    for (var prop of __getOwnPropSymbols$2(b)) {
+      if (__propIsEnum$2.call(b, prop))
+        __defNormalProp$2(a, prop, b[prop]);
+    }
+  return a;
 };
-function getStatusSchema(netId, config) {
-  const { tokens, optionalTokens = [], nativeCurrency } = config;
-  const schema = JSON.parse(JSON.stringify(statusSchema));
-  const instances = Object.keys(tokens).reduce(
-    (acc, token) => {
-      const { instanceAddress, tokenAddress, symbol, decimals, optionalInstances = [] } = tokens[token];
-      const amounts = Object.keys(instanceAddress);
-      const instanceProperties = {
-        type: "object",
-        properties: {
-          instanceAddress: {
-            type: "object",
-            properties: amounts.reduce((acc2, cur) => {
-              acc2[cur] = addressType;
-              return acc2;
-            }, {}),
-            required: amounts.filter((amount) => !optionalInstances.includes(amount))
-          },
-          decimals: { enum: [decimals] }
-        },
-        required: ["instanceAddress", "decimals"].concat(
-          tokenAddress ? ["tokenAddress"] : [],
-          symbol ? ["symbol"] : []
-        )
-      };
-      if (tokenAddress) {
-        instanceProperties.properties.tokenAddress = addressType;
-      }
-      if (symbol) {
-        instanceProperties.properties.symbol = { enum: [symbol] };
-      }
-      acc.properties[token] = instanceProperties;
-      if (!optionalTokens.includes(token)) {
-        acc.required.push(token);
-      }
-      return acc;
-    },
-    {
-      type: "object",
-      properties: {},
-      required: []
-    }
-  );
-  schema.properties.instances = instances;
-  if (Number(netId) === 1) {
-    const _tokens = Object.keys(tokens).filter((t) => t !== nativeCurrency);
-    const ethPrices = {
-      type: "object",
-      properties: _tokens.reduce((acc, token) => {
-        acc[token] = bnType;
-        return acc;
-      }, {})
-      // required: _tokens
-    };
-    schema.properties.ethPrices = ethPrices;
-  }
-  return schema;
-}
-
-const jobsSchema = {
-  type: "object",
-  properties: {
-    error: { type: "string" },
-    id: { type: "string" },
-    type: { type: "string" },
-    status: { type: "string" },
-    contract: { type: "string" },
-    proof: { type: "string" },
-    args: {
-      type: "array",
-      items: { type: "string" }
-    },
-    txHash: { type: "string" },
-    confirmations: { type: "number" },
-    failedReason: { type: "string" }
-  },
-  required: ["id", "status"]
-};
-
-const ajv = new Ajv({ allErrors: true });
-ajv.addKeyword({
-  keyword: "BN",
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  validate: (schema, data) => {
-    try {
-      BigInt(data);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  },
-  errors: true
-});
-
-var __async$6 = (__this, __arguments, generator) => {
-  return new Promise((resolve, reject) => {
-    var fulfilled = (value) => {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var rejected = (value) => {
-      try {
-        step(generator.throw(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-    step((generator = generator.apply(__this, __arguments)).next());
-  });
-};
-class Pedersen {
-  constructor() {
-    this.pedersenPromise = this.initPedersen();
-  }
-  initPedersen() {
-    return __async$6(this, null, function* () {
-      this.pedersenHash = yield buildPedersenHash();
-      this.babyJub = this.pedersenHash.babyJub;
-    });
-  }
-  unpackPoint(buffer) {
-    return __async$6(this, null, function* () {
-      var _a, _b;
-      yield this.pedersenPromise;
-      return (_b = this.babyJub) == null ? void 0 : _b.unpackPoint((_a = this.pedersenHash) == null ? void 0 : _a.hash(buffer));
-    });
-  }
-  toStringBuffer(buffer) {
-    var _a;
-    return (_a = this.babyJub) == null ? void 0 : _a.F.toString(buffer);
-  }
-}
-const pedersen = new Pedersen();
-function buffPedersenHash(buffer) {
-  return __async$6(this, null, function* () {
-    const [hash] = yield pedersen.unpackPoint(buffer);
-    return pedersen.toStringBuffer(hash);
-  });
-}
-
-var __async$5 = (__this, __arguments, generator) => {
-  return new Promise((resolve, reject) => {
-    var fulfilled = (value) => {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var rejected = (value) => {
-      try {
-        step(generator.throw(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-    step((generator = generator.apply(__this, __arguments)).next());
-  });
-};
-function createDeposit(_0) {
-  return __async$5(this, arguments, function* ({ nullifier, secret }) {
-    const preimage = new Uint8Array([...leInt2Buff(nullifier), ...leInt2Buff(secret)]);
-    const noteHex = toFixedHex(bytesToBN(preimage), 62);
-    const commitment = BigInt(yield buffPedersenHash(preimage));
-    const commitmentHex = toFixedHex(commitment);
-    const nullifierHash = BigInt(yield buffPedersenHash(leInt2Buff(nullifier)));
-    const nullifierHex = toFixedHex(nullifierHash);
-    return {
-      preimage,
-      noteHex,
-      commitment,
-      commitmentHex,
-      nullifierHash,
-      nullifierHex
-    };
-  });
-}
-class Deposit {
-  constructor({
-    currency,
-    amount,
-    netId,
-    nullifier,
-    secret,
-    note,
-    noteHex,
-    invoice,
-    commitmentHex,
-    nullifierHex
-  }) {
-    this.currency = currency;
-    this.amount = amount;
-    this.netId = netId;
-    this.nullifier = nullifier;
-    this.secret = secret;
-    this.note = note;
-    this.noteHex = noteHex;
-    this.invoice = invoice;
-    this.commitmentHex = commitmentHex;
-    this.nullifierHex = nullifierHex;
-  }
-  toString() {
-    return JSON.stringify(
-      {
-        currency: this.currency,
-        amount: this.amount,
-        netId: this.netId,
-        nullifier: this.nullifier,
-        secret: this.secret,
-        note: this.note,
-        noteHex: this.noteHex,
-        invoice: this.invoice,
-        commitmentHex: this.commitmentHex,
-        nullifierHex: this.nullifierHex
-      },
-      null,
-      2
-    );
-  }
-  static createNote(_0) {
-    return __async$5(this, arguments, function* ({ currency, amount, netId, nullifier, secret }) {
-      if (!nullifier) {
-        nullifier = rBigInt(31);
-      }
-      if (!secret) {
-        secret = rBigInt(31);
-      }
-      const depositObject = yield createDeposit({
-        nullifier,
-        secret
-      });
-      const newDeposit = new Deposit({
-        currency: currency.toLowerCase(),
-        amount,
-        netId: Number(netId),
-        note: `tornado-${currency.toLowerCase()}-${amount}-${netId}-${depositObject.noteHex}`,
-        noteHex: depositObject.noteHex,
-        invoice: `tornadoInvoice-${currency.toLowerCase()}-${amount}-${netId}-${depositObject.commitmentHex}`,
-        nullifier,
-        secret,
-        commitmentHex: depositObject.commitmentHex,
-        nullifierHex: depositObject.nullifierHex
-      });
-      return newDeposit;
-    });
-  }
-  static parseNote(noteString) {
-    return __async$5(this, null, function* () {
-      const noteRegex = new RegExp("tornado-(?<currency>\\w+)-(?<amount>[\\d.]+)-(?<netId>\\d+)-0x(?<note>[0-9a-fA-F]{124})", "g");
-      const match = noteRegex.exec(noteString);
-      if (!match) {
-        throw new Error("The note has invalid format");
-      }
-      const matchGroup = match == null ? void 0 : match.groups;
-      const currency = matchGroup.currency.toLowerCase();
-      const amount = matchGroup.amount;
-      const netId = Number(matchGroup.netId);
-      const bytes = bnToBytes("0x" + matchGroup.note);
-      const nullifier = BigInt(leBuff2Int(bytes.slice(0, 31)).toString());
-      const secret = BigInt(leBuff2Int(bytes.slice(31, 62)).toString());
-      const depositObject = yield createDeposit({ nullifier, secret });
-      const invoice = `tornadoInvoice-${currency}-${amount}-${netId}-${depositObject.commitmentHex}`;
-      const newDeposit = new Deposit({
-        currency,
-        amount,
-        netId,
-        note: noteString,
-        noteHex: depositObject.noteHex,
-        invoice,
-        nullifier,
-        secret,
-        commitmentHex: depositObject.commitmentHex,
-        nullifierHex: depositObject.nullifierHex
-      });
-      return newDeposit;
-    });
-  }
-}
-class Invoice {
-  constructor(invoiceString) {
-    const invoiceRegex = new RegExp("tornadoInvoice-(?<currency>\\w+)-(?<amount>[\\d.]+)-(?<netId>\\d+)-0x(?<commitment>[0-9a-fA-F]{64})", "g");
-    const match = invoiceRegex.exec(invoiceString);
-    if (!match) {
-      throw new Error("The note has invalid format");
-    }
-    const matchGroup = match == null ? void 0 : match.groups;
-    const currency = matchGroup.currency.toLowerCase();
-    const amount = matchGroup.amount;
-    const netId = Number(matchGroup.netId);
-    this.currency = currency;
-    this.amount = amount;
-    this.netId = netId;
-    this.commitment = "0x" + matchGroup.commitment;
-    this.invoice = invoiceString;
-  }
-  toString() {
-    return JSON.stringify(
-      {
-        currency: this.currency,
-        amount: this.amount,
-        netId: this.netId,
-        commitment: this.commitment,
-        invoice: this.invoice
-      },
-      null,
-      2
-    );
-  }
-}
-
-const DUMMY_ADDRESS = "0x1111111111111111111111111111111111111111";
-const DUMMY_NONCE = "0x1111111111111111111111111111111111111111111111111111111111111111";
-const DUMMY_WITHDRAW_DATA = "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111";
-function convertETHToTokenAmount(amountInWei, tokenPriceInWei, tokenDecimals = 18) {
-  const tokenDecimalsMultiplier = BigInt(10 ** Number(tokenDecimals));
-  return BigInt(amountInWei) * tokenDecimalsMultiplier / BigInt(tokenPriceInWei);
-}
-class TornadoFeeOracle {
-  constructor(ovmGasPriceOracle) {
-    if (ovmGasPriceOracle) {
-      this.ovmGasPriceOracle = ovmGasPriceOracle;
-    }
-  }
-  /**
-   * Calculate L1 fee for op-stack chains
-   *
-   * This is required since relayers would pay the full transaction fees for users
-   */
-  fetchL1OptimismFee(tx) {
-    if (!this.ovmGasPriceOracle) {
-      return new Promise((resolve) => resolve(BigInt(0)));
-    }
-    if (!tx) {
-      tx = {
-        type: 0,
-        gasLimit: 1e6,
-        nonce: Number(DUMMY_NONCE),
-        data: DUMMY_WITHDRAW_DATA,
-        gasPrice: parseUnits("1", "gwei"),
-        from: DUMMY_ADDRESS,
-        to: DUMMY_ADDRESS
-      };
-    }
-    return this.ovmGasPriceOracle.getL1Fee.staticCall(Transaction.from(tx).unsignedSerialized);
-  }
-  /**
-   * We don't need to distinguish default refunds by tokens since most users interact with other defi protocols after withdrawal
-   * So we default with 1M gas which is enough for two or three swaps
-   * Using 30 gwei for default but it is recommended to supply cached gasPrice value from the UI
-   */
-  defaultEthRefund(gasPrice, gasLimit) {
-    return (gasPrice ? BigInt(gasPrice) : parseUnits("30", "gwei")) * BigInt(gasLimit || 1e6);
-  }
-  /**
-   * Calculates token amount for required ethRefund purchases required to calculate fees
-   */
-  calculateTokenAmount(ethRefund, tokenPriceInEth, tokenDecimals) {
-    return convertETHToTokenAmount(ethRefund, tokenPriceInEth, tokenDecimals);
-  }
-  /**
-   * Warning: For tokens you need to check if the fees are above denomination
-   * (Usually happens for small denomination pool or if the gas price is high)
-   */
-  calculateRelayerFee({
-    gasPrice,
-    gasLimit = 6e5,
-    l1Fee = 0,
-    denomination,
-    ethRefund = BigInt(0),
-    tokenPriceInWei,
-    tokenDecimals = 18,
-    relayerFeePercent = 0.33,
-    isEth = true,
-    premiumPercent = 20
-  }) {
-    const gasCosts = BigInt(gasPrice) * BigInt(gasLimit) + BigInt(l1Fee);
-    const relayerFee = BigInt(denomination) * BigInt(Math.floor(1e4 * relayerFeePercent)) / BigInt(1e4 * 100);
-    if (isEth) {
-      return (gasCosts + relayerFee) * BigInt(premiumPercent ? 100 + premiumPercent : 100) / BigInt(100);
-    }
-    const feeInEth = gasCosts + BigInt(ethRefund);
-    return (convertETHToTokenAmount(feeInEth, tokenPriceInWei, tokenDecimals) + relayerFee) * BigInt(premiumPercent ? 100 + premiumPercent : 100) / BigInt(100);
-  }
-}
-
-var __async$4 = (__this, __arguments, generator) => {
-  return new Promise((resolve, reject) => {
-    var fulfilled = (value) => {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var rejected = (value) => {
-      try {
-        step(generator.throw(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-    step((generator = generator.apply(__this, __arguments)).next());
-  });
-};
-class Mimc {
-  constructor() {
-    this.mimcPromise = this.initMimc();
-  }
-  initMimc() {
-    return __async$4(this, null, function* () {
-      this.sponge = yield buildMimcSponge();
-      this.hash = (left, right) => {
-        var _a, _b;
-        return (_b = this.sponge) == null ? void 0 : _b.F.toString((_a = this.sponge) == null ? void 0 : _a.multiHash([BigInt(left), BigInt(right)]));
-      };
-    });
-  }
-  getHash() {
-    return __async$4(this, null, function* () {
-      yield this.mimcPromise;
-      return {
-        sponge: this.sponge,
-        hash: this.hash
-      };
-    });
-  }
-}
-const mimc = new Mimc();
-
-var __async$3 = (__this, __arguments, generator) => {
-  return new Promise((resolve, reject) => {
-    var fulfilled = (value) => {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var rejected = (value) => {
-      try {
-        step(generator.throw(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-    step((generator = generator.apply(__this, __arguments)).next());
-  });
-};
-class MerkleTreeService {
-  constructor({
-    netId,
-    amount,
-    currency,
-    Tornado,
-    commitment,
-    merkleTreeHeight = 20,
-    emptyElement = "21663839004416932945382355908790599225266501822907911457504978515578255421292",
-    merkleWorkerPath
-  }) {
-    const instanceName = `${netId}_${currency}_${amount}`;
-    this.currency = currency;
-    this.amount = amount;
-    this.netId = Number(netId);
-    this.Tornado = Tornado;
-    this.instanceName = instanceName;
-    this.commitment = commitment;
-    this.merkleTreeHeight = merkleTreeHeight;
-    this.emptyElement = emptyElement;
-    this.merkleWorkerPath = merkleWorkerPath;
-  }
-  createTree(_0) {
-    return __async$3(this, arguments, function* ({ events }) {
-      const { hash: hashFunction } = yield mimc.getHash();
-      if (this.merkleWorkerPath) {
-        console.log("Using merkleWorker\n");
-        try {
-          if (isNode) {
-            const merkleWorkerPromise = new Promise((resolve, reject) => {
-              const worker = new Worker$1(this.merkleWorkerPath, {
-                workerData: {
-                  merkleTreeHeight: this.merkleTreeHeight,
-                  elements: events,
-                  zeroElement: this.emptyElement
-                }
-              });
-              worker.on("message", resolve);
-              worker.on("error", reject);
-              worker.on("exit", (code) => {
-                if (code !== 0) {
-                  reject(new Error(`Worker stopped with exit code ${code}`));
-                }
-              });
-            });
-            return MerkleTree.deserialize(JSON.parse(yield merkleWorkerPromise), hashFunction);
-          } else {
-            const merkleWorkerPromise = new Promise((resolve, reject) => {
-              const worker = new Worker(this.merkleWorkerPath);
-              worker.onmessage = (e) => {
-                resolve(e.data);
-              };
-              worker.onerror = (e) => {
-                reject(e);
-              };
-              worker.postMessage({
-                merkleTreeHeight: this.merkleTreeHeight,
-                elements: events,
-                zeroElement: this.emptyElement
-              });
-            });
-            return MerkleTree.deserialize(JSON.parse(yield merkleWorkerPromise), hashFunction);
-          }
-        } catch (err) {
-          console.log("merkleWorker failed, falling back to synchronous merkle tree");
-          console.log(err);
-        }
-      }
-      return new MerkleTree(this.merkleTreeHeight, events, {
-        zeroElement: this.emptyElement,
-        hashFunction
-      });
-    });
-  }
-  verifyTree(_0) {
-    return __async$3(this, arguments, function* ({ events }) {
-      console.log(
-        `
-Creating deposit tree for ${this.netId} ${this.amount} ${this.currency.toUpperCase()} would take a while
-`
-      );
-      console.time("Created tree in");
-      const tree = yield this.createTree({ events: events.map(({ commitment }) => BigInt(commitment).toString()) });
-      console.timeEnd("Created tree in");
-      console.log("");
-      const isKnownRoot = yield this.Tornado.isKnownRoot(toFixedHex(BigInt(tree.root)));
-      if (!isKnownRoot) {
-        const errMsg = `Deposit Event ${this.netId} ${this.amount} ${this.currency} is invalid`;
-        throw new Error(errMsg);
-      }
-      return tree;
-    });
-  }
-}
-
-const blockSyncInterval = 1e4;
-const enabledChains = ["1", "10", "56", "100", "137", "42161", "43114", "11155111"];
+var NetId = /* @__PURE__ */ ((NetId2) => {
+  NetId2[NetId2["MAINNET"] = 1] = "MAINNET";
+  NetId2[NetId2["BSC"] = 56] = "BSC";
+  NetId2[NetId2["POLYGON"] = 137] = "POLYGON";
+  NetId2[NetId2["OPTIMISM"] = 10] = "OPTIMISM";
+  NetId2[NetId2["ARBITRUM"] = 42161] = "ARBITRUM";
+  NetId2[NetId2["GNOSIS"] = 100] = "GNOSIS";
+  NetId2[NetId2["AVALANCHE"] = 43114] = "AVALANCHE";
+  NetId2[NetId2["SEPOLIA"] = 11155111] = "SEPOLIA";
+  return NetId2;
+})(NetId || {});
 const theGraph = {
   name: "Hosted Graph",
   url: "https://api.thegraph.com"
@@ -5868,8 +5816,8 @@ const tornado = {
   name: "Tornado Subgraphs",
   url: "https://tornadocash-rpc.com"
 };
-const networkConfig = {
-  netId1: {
+const defaultConfig = {
+  [1 /* MAINNET */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 80,
@@ -5879,11 +5827,7 @@ const networkConfig = {
     },
     nativeCurrency: "eth",
     currencyName: "ETH",
-    explorerUrl: {
-      tx: "https://etherscan.io/tx/",
-      address: "https://etherscan.io/address/",
-      block: "https://etherscan.io/block/"
-    },
+    explorerUrl: "https://etherscan.io",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Ethereum Mainnet",
@@ -5894,7 +5838,7 @@ const networkConfig = {
         url: "https://tornadocash-rpc.com"
       },
       chainnodes: {
-        name: "Tornado RPC",
+        name: "Chainnodes RPC",
         url: "https://mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607"
       },
       mevblockerRPC: {
@@ -5922,14 +5866,19 @@ const networkConfig = {
         url: "https://1rpc.io/eth"
       }
     },
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b",
-    registryContract: "0x58E8dCC13BE9780fC42E8723D8EaD4CF46943dF2",
     echoContract: "0x9B27DD5Bb15d42DC224FCD0B7caEbBe16161Df42",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
+    tornContract: "0x77777FeDdddFfC19Ff86DB637967013e6C6A116C",
+    governanceContract: "0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce",
+    stakingRewardsContract: "0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29",
+    registryContract: "0x58E8dCC13BE9780fC42E8723D8EaD4CF46943dF2",
     aggregatorContract: "0xE8F47A78A6D52D317D0D2FFFac56739fE14D1b49",
     reverseRecordsContract: "0x3671aE578E63FdF66ad4F3E12CC0c0d71Ac7510C",
     tornadoSubgraph: "tornadocash/mainnet-tornado-subgraph",
     registrySubgraph: "tornadocash/tornado-relayer-registry",
+    governanceSubgraph: "tornadocash/tornado-governance",
     subgraphs: {
       tornado,
       theGraph
@@ -6011,16 +5960,12 @@ const networkConfig = {
     constants: {
       GOVERNANCE_BLOCK: 11474695,
       NOTE_ACCOUNT_BLOCK: 11842486,
-      ENCRYPTED_NOTES_BLOCK: 14248730,
+      ENCRYPTED_NOTES_BLOCK: 12143762,
       REGISTRY_BLOCK: 14173129,
       MINING_BLOCK_TIME: 15
-    },
-    "torn.contract.tornadocash.eth": "0x77777FeDdddFfC19Ff86DB637967013e6C6A116C",
-    "governance.contract.tornadocash.eth": "0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce",
-    "tornado-router.contract.tornadocash.eth": "0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b",
-    "staking-rewards.contract.tornadocash.eth": "0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29"
+    }
   },
-  netId56: {
+  [56 /* BSC */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 5,
@@ -6030,18 +5975,15 @@ const networkConfig = {
     },
     nativeCurrency: "bnb",
     currencyName: "BNB",
-    explorerUrl: {
-      tx: "https://bscscan.com/tx/",
-      address: "https://bscscan.com/address/",
-      block: "https://bscscan.com/block/"
-    },
+    explorerUrl: "https://bscscan.com",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Binance Smart Chain",
     deployedBlock: 8158799,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x0D5550d52428E7e3175bfc9550207e4ad3859b17",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
     tornadoSubgraph: "tornadocash/bsc-tornado-subgraph",
     subgraphs: {
       tornado,
@@ -6053,7 +5995,7 @@ const networkConfig = {
         url: "https://tornadocash-rpc.com/bsc"
       },
       chainnodes: {
-        name: "Tornado RPC",
+        name: "Chainnodes RPC",
         url: "https://bsc-mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607"
       },
       stackup: {
@@ -6086,10 +6028,9 @@ const networkConfig = {
     constants: {
       NOTE_ACCOUNT_BLOCK: 8159269,
       ENCRYPTED_NOTES_BLOCK: 8159269
-    },
-    "tornado-proxy-light.contract.tornadocash.eth": "0x0D5550d52428E7e3175bfc9550207e4ad3859b17"
+    }
   },
-  netId137: {
+  [137 /* POLYGON */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 100,
@@ -6099,18 +6040,15 @@ const networkConfig = {
     },
     nativeCurrency: "matic",
     currencyName: "MATIC",
-    explorerUrl: {
-      tx: "https://polygonscan.com/tx/",
-      address: "https://polygonscan.com/address/",
-      block: "https://polygonscan.com/block/"
-    },
+    explorerUrl: "https://polygonscan.com",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Polygon (Matic) Network",
     deployedBlock: 16257962,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x0D5550d52428E7e3175bfc9550207e4ad3859b17",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
     gasPriceOracleContract: "0xF81A8D8D3581985D3969fe53bFA67074aDFa8F3C",
     tornadoSubgraph: "tornadocash/matic-tornado-subgraph",
     subgraphs: {
@@ -6148,10 +6086,9 @@ const networkConfig = {
     constants: {
       NOTE_ACCOUNT_BLOCK: 16257996,
       ENCRYPTED_NOTES_BLOCK: 16257996
-    },
-    "tornado-proxy-light.contract.tornadocash.eth": "0x0D5550d52428E7e3175bfc9550207e4ad3859b17"
+    }
   },
-  netId10: {
+  [10 /* OPTIMISM */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 1e-3,
@@ -6161,18 +6098,15 @@ const networkConfig = {
     },
     nativeCurrency: "eth",
     currencyName: "ETH",
-    explorerUrl: {
-      tx: "https://optimistic.etherscan.io/tx/",
-      address: "https://optimistic.etherscan.io/address/",
-      block: "https://optimistic.etherscan.io/block/"
-    },
+    explorerUrl: "https://optimistic.etherscan.io",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Optimism",
     deployedBlock: 2243689,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x0D5550d52428E7e3175bfc9550207e4ad3859b17",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
     ovmGasPriceOracleContract: "0x420000000000000000000000000000000000000F",
     tornadoSubgraph: "tornadocash/optimism-tornado-subgraph",
     subgraphs: {
@@ -6185,7 +6119,7 @@ const networkConfig = {
         url: "https://tornadocash-rpc.com/op"
       },
       chainnodes: {
-        name: "Tornado RPC",
+        name: "Chainnodes RPC",
         url: "https://optimism-mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607"
       },
       optimism: {
@@ -6218,10 +6152,9 @@ const networkConfig = {
     constants: {
       NOTE_ACCOUNT_BLOCK: 2243694,
       ENCRYPTED_NOTES_BLOCK: 2243694
-    },
-    "tornado-proxy-light.contract.tornadocash.eth": "0x0D5550d52428E7e3175bfc9550207e4ad3859b17"
+    }
   },
-  netId42161: {
+  [42161 /* ARBITRUM */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 4,
@@ -6231,18 +6164,15 @@ const networkConfig = {
     },
     nativeCurrency: "eth",
     currencyName: "ETH",
-    explorerUrl: {
-      tx: "https://arbiscan.io/tx/",
-      address: "https://arbiscan.io/address/",
-      block: "https://arbiscan.io/block/"
-    },
+    explorerUrl: "https://arbiscan.io",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Arbitrum One",
     deployedBlock: 3430648,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x0D5550d52428E7e3175bfc9550207e4ad3859b17",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
     tornadoSubgraph: "tornadocash/arbitrum-tornado-subgraph",
     subgraphs: {
       tornado,
@@ -6254,7 +6184,7 @@ const networkConfig = {
         url: "https://tornadocash-rpc.com/arbitrum"
       },
       chainnodes: {
-        name: "Tornado RPC",
+        name: "Chainnodes RPC",
         url: "https://arbitrum-one.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607"
       },
       arbitrum: {
@@ -6287,10 +6217,9 @@ const networkConfig = {
     constants: {
       NOTE_ACCOUNT_BLOCK: 3430605,
       ENCRYPTED_NOTES_BLOCK: 3430605
-    },
-    "tornado-proxy-light.contract.tornadocash.eth": "0x0D5550d52428E7e3175bfc9550207e4ad3859b17"
+    }
   },
-  netId100: {
+  [100 /* GNOSIS */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 6,
@@ -6300,18 +6229,15 @@ const networkConfig = {
     },
     nativeCurrency: "xdai",
     currencyName: "xDAI",
-    explorerUrl: {
-      tx: "https://blockscout.com/xdai/mainnet/tx/",
-      address: "https://blockscout.com/xdai/mainnet/address/",
-      block: "https://blockscout.com/xdai/mainnet/block/"
-    },
+    explorerUrl: "https://gnosisscan.io",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Gnosis Chain",
     deployedBlock: 17754561,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x0D5550d52428E7e3175bfc9550207e4ad3859b17",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
     tornadoSubgraph: "tornadocash/xdai-tornado-subgraph",
     subgraphs: {
       tornado,
@@ -6323,7 +6249,7 @@ const networkConfig = {
         url: "https://tornadocash-rpc.com/gnosis"
       },
       chainnodes: {
-        name: "Tornado RPC",
+        name: "Chainnodes RPC",
         url: "https://gnosis-mainnet.chainnodes.org/d692ae63-0a7e-43e0-9da9-fe4f4cc6c607"
       },
       gnosis: {
@@ -6356,10 +6282,9 @@ const networkConfig = {
     constants: {
       NOTE_ACCOUNT_BLOCK: 17754564,
       ENCRYPTED_NOTES_BLOCK: 17754564
-    },
-    "tornado-proxy-light.contract.tornadocash.eth": "0x0D5550d52428E7e3175bfc9550207e4ad3859b17"
+    }
   },
-  netId43114: {
+  [43114 /* AVALANCHE */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 225,
@@ -6369,18 +6294,15 @@ const networkConfig = {
     },
     nativeCurrency: "avax",
     currencyName: "AVAX",
-    explorerUrl: {
-      tx: "https://snowtrace.io/tx/",
-      address: "https://snowtrace.io/address/",
-      block: "https://snowtrace.io/block/"
-    },
+    explorerUrl: "https://snowtrace.io",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Avalanche Mainnet",
     deployedBlock: 4429818,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x0D5550d52428E7e3175bfc9550207e4ad3859b17",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    offchainOracleContract: "0x0AdDd25a91563696D8567Df78D5A01C9a991F9B8",
     tornadoSubgraph: "tornadocash/avalanche-tornado-subgraph",
     subgraphs: {
       theGraph
@@ -6415,10 +6337,9 @@ const networkConfig = {
     constants: {
       NOTE_ACCOUNT_BLOCK: 4429813,
       ENCRYPTED_NOTES_BLOCK: 4429813
-    },
-    "tornado-proxy-light.contract.tornadocash.eth": "0x0D5550d52428E7e3175bfc9550207e4ad3859b17"
+    }
   },
-  netId11155111: {
+  [11155111 /* SEPOLIA */]: {
     rpcCallRetryAttempt: 15,
     gasPrices: {
       instant: 2,
@@ -6428,19 +6349,18 @@ const networkConfig = {
     },
     nativeCurrency: "eth",
     currencyName: "SepoliaETH",
-    explorerUrl: {
-      tx: "https://sepolia.etherscan.io/tx/",
-      address: "https://sepolia.etherscan.io/address/",
-      block: "https://sepolia.etherscan.io/block/"
-    },
+    explorerUrl: "https://sepolia.etherscan.io",
     merkleTreeHeight: 20,
     emptyElement: "21663839004416932945382355908790599225266501822907911457504978515578255421292",
     networkName: "Ethereum Sepolia",
     deployedBlock: 5594395,
-    multicall: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    multicallContract: "0xcA11bde05977b3631167028862bE2a173976CA11",
     routerContract: "0x1572AFE6949fdF51Cb3E0856216670ae9Ee160Ee",
+    echoContract: "0xa75BF2815618872f155b7C4B0C81bF990f5245E4",
+    tornContract: "0x3AE6667167C0f44394106E197904519D808323cA",
+    governanceContract: "0xe5324cD7602eeb387418e594B87aCADee08aeCAD",
+    stakingRewardsContract: "0x6d0018890751Efd31feb8166711B16732E2b496b",
     registryContract: "0x1428e5d2356b13778A13108b10c440C83011dfB8",
-    echoContract: "0xcDD1fc3F5ac2782D83449d3AbE80D6b7B273B0e5",
     aggregatorContract: "0x4088712AC9fad39ea133cdb9130E465d235e9642",
     reverseRecordsContract: "0xEc29700C0283e5Be64AcdFe8077d6cC95dE23C23",
     tornadoSubgraph: "tornadocash/sepolia-tornado-subgraph",
@@ -6493,13 +6413,806 @@ const networkConfig = {
       NOTE_ACCOUNT_BLOCK: 5594395,
       ENCRYPTED_NOTES_BLOCK: 5594395,
       MINING_BLOCK_TIME: 15
-    },
-    "torn.contract.tornadocash.eth": "0x3AE6667167C0f44394106E197904519D808323cA",
-    "governance.contract.tornadocash.eth": "0xe5324cD7602eeb387418e594B87aCADee08aeCAD",
-    "tornado-router.contract.tornadocash.eth": "0x1572AFE6949fdF51Cb3E0856216670ae9Ee160Ee"
+    }
   }
 };
-const subdomains = enabledChains.map((chain) => networkConfig[`netId${chain}`].ensSubdomainKey);
+const enabledChains = Object.values(NetId);
+let customConfig = {};
+function addNetwork(newConfig) {
+  enabledChains.push(
+    ...Object.keys(newConfig).map((netId) => Number(netId)).filter((netId) => !enabledChains.includes(netId))
+  );
+  customConfig = __spreadValues$2(__spreadValues$2({}, customConfig), newConfig);
+}
+function getNetworkConfig() {
+  const allConfig = __spreadValues$2(__spreadValues$2({}, defaultConfig), customConfig);
+  return enabledChains.reduce((acc, curr) => {
+    acc[curr] = allConfig[curr];
+    return acc;
+  }, {});
+}
+function getConfig(netId) {
+  const allConfig = getNetworkConfig();
+  const chainConfig = allConfig[netId];
+  if (!chainConfig) {
+    const errMsg = `No config found for network ${netId}!`;
+    throw new Error(errMsg);
+  }
+  return chainConfig;
+}
+function getInstanceByAddress({ netId, address }) {
+  const { tokens } = getConfig(netId);
+  for (const [currency, { instanceAddress }] of Object.entries(tokens)) {
+    for (const [amount, instance] of Object.entries(instanceAddress)) {
+      if (instance === address) {
+        return {
+          amount,
+          currency
+        };
+      }
+    }
+  }
+}
+function getSubdomains() {
+  const allConfig = getNetworkConfig();
+  return enabledChains.map((chain) => allConfig[chain].ensSubdomainKey);
+}
+
+const addressType = { type: "string", pattern: "^0x[a-fA-F0-9]{40}$" };
+const bnType = { type: "string", BN: true };
+const statusSchema = {
+  type: "object",
+  properties: {
+    rewardAccount: addressType,
+    gasPrices: {
+      type: "object",
+      properties: {
+        fast: { type: "number" },
+        additionalProperties: { type: "number" }
+      },
+      required: ["fast"]
+    },
+    netId: { type: "integer" },
+    tornadoServiceFee: { type: "number", maximum: 20, minimum: 0 },
+    latestBlock: { type: "number" },
+    version: { type: "string" },
+    health: {
+      type: "object",
+      properties: {
+        status: { const: "true" },
+        error: { type: "string" }
+      },
+      required: ["status"]
+    },
+    currentQueue: { type: "number" }
+  },
+  required: ["rewardAccount", "instances", "netId", "tornadoServiceFee", "version", "health"]
+};
+function getStatusSchema(netId, config) {
+  const { tokens, optionalTokens = [], nativeCurrency } = config;
+  const schema = JSON.parse(JSON.stringify(statusSchema));
+  const instances = Object.keys(tokens).reduce(
+    (acc, token) => {
+      const { instanceAddress, tokenAddress, symbol, decimals, optionalInstances = [] } = tokens[token];
+      const amounts = Object.keys(instanceAddress);
+      const instanceProperties = {
+        type: "object",
+        properties: {
+          instanceAddress: {
+            type: "object",
+            properties: amounts.reduce((acc2, cur) => {
+              acc2[cur] = addressType;
+              return acc2;
+            }, {}),
+            required: amounts.filter((amount) => !optionalInstances.includes(amount))
+          },
+          decimals: { enum: [decimals] }
+        },
+        required: ["instanceAddress", "decimals"].concat(
+          tokenAddress ? ["tokenAddress"] : [],
+          symbol ? ["symbol"] : []
+        )
+      };
+      if (tokenAddress) {
+        instanceProperties.properties.tokenAddress = addressType;
+      }
+      if (symbol) {
+        instanceProperties.properties.symbol = { enum: [symbol] };
+      }
+      acc.properties[token] = instanceProperties;
+      if (!optionalTokens.includes(token)) {
+        acc.required.push(token);
+      }
+      return acc;
+    },
+    {
+      type: "object",
+      properties: {},
+      required: []
+    }
+  );
+  schema.properties.instances = instances;
+  if (netId === NetId.MAINNET) {
+    const _tokens = Object.keys(tokens).filter((t) => t !== nativeCurrency);
+    const ethPrices = {
+      type: "object",
+      properties: _tokens.reduce((acc, token) => {
+        acc[token] = bnType;
+        return acc;
+      }, {})
+      // required: _tokens
+    };
+    schema.properties.ethPrices = ethPrices;
+  }
+  return schema;
+}
+
+const jobsSchema = {
+  type: "object",
+  properties: {
+    error: { type: "string" },
+    id: { type: "string" },
+    type: { type: "string" },
+    status: { type: "string" },
+    contract: { type: "string" },
+    proof: { type: "string" },
+    args: {
+      type: "array",
+      items: { type: "string" }
+    },
+    txHash: { type: "string" },
+    confirmations: { type: "number" },
+    failedReason: { type: "string" }
+  },
+  required: ["id", "status"]
+};
+
+const ajv = new Ajv({ allErrors: true });
+ajv.addKeyword({
+  keyword: "BN",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  validate: (schema, data) => {
+    try {
+      BigInt(data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+  errors: true
+});
+
+var __async$7 = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+class Pedersen {
+  constructor() {
+    this.pedersenPromise = this.initPedersen();
+  }
+  initPedersen() {
+    return __async$7(this, null, function* () {
+      this.pedersenHash = yield buildPedersenHash();
+      this.babyJub = this.pedersenHash.babyJub;
+    });
+  }
+  unpackPoint(buffer) {
+    return __async$7(this, null, function* () {
+      var _a, _b;
+      yield this.pedersenPromise;
+      return (_b = this.babyJub) == null ? void 0 : _b.unpackPoint((_a = this.pedersenHash) == null ? void 0 : _a.hash(buffer));
+    });
+  }
+  toStringBuffer(buffer) {
+    var _a;
+    return (_a = this.babyJub) == null ? void 0 : _a.F.toString(buffer);
+  }
+}
+const pedersen = new Pedersen();
+function buffPedersenHash(buffer) {
+  return __async$7(this, null, function* () {
+    const [hash] = yield pedersen.unpackPoint(buffer);
+    return pedersen.toStringBuffer(hash);
+  });
+}
+
+var __async$6 = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+function createDeposit(_0) {
+  return __async$6(this, arguments, function* ({ nullifier, secret }) {
+    const preimage = new Uint8Array([...leInt2Buff(nullifier), ...leInt2Buff(secret)]);
+    const noteHex = toFixedHex(bytesToBN(preimage), 62);
+    const commitment = BigInt(yield buffPedersenHash(preimage));
+    const commitmentHex = toFixedHex(commitment);
+    const nullifierHash = BigInt(yield buffPedersenHash(leInt2Buff(nullifier)));
+    const nullifierHex = toFixedHex(nullifierHash);
+    return {
+      preimage,
+      noteHex,
+      commitment,
+      commitmentHex,
+      nullifierHash,
+      nullifierHex
+    };
+  });
+}
+class Deposit {
+  constructor({
+    currency,
+    amount,
+    netId,
+    nullifier,
+    secret,
+    note,
+    noteHex,
+    invoice,
+    commitmentHex,
+    nullifierHex
+  }) {
+    this.currency = currency;
+    this.amount = amount;
+    this.netId = netId;
+    this.nullifier = nullifier;
+    this.secret = secret;
+    this.note = note;
+    this.noteHex = noteHex;
+    this.invoice = invoice;
+    this.commitmentHex = commitmentHex;
+    this.nullifierHex = nullifierHex;
+  }
+  toString() {
+    return JSON.stringify(
+      {
+        currency: this.currency,
+        amount: this.amount,
+        netId: this.netId,
+        nullifier: this.nullifier,
+        secret: this.secret,
+        note: this.note,
+        noteHex: this.noteHex,
+        invoice: this.invoice,
+        commitmentHex: this.commitmentHex,
+        nullifierHex: this.nullifierHex
+      },
+      null,
+      2
+    );
+  }
+  static createNote(_0) {
+    return __async$6(this, arguments, function* ({ currency, amount, netId, nullifier, secret }) {
+      if (!nullifier) {
+        nullifier = rBigInt(31);
+      }
+      if (!secret) {
+        secret = rBigInt(31);
+      }
+      const depositObject = yield createDeposit({
+        nullifier,
+        secret
+      });
+      const newDeposit = new Deposit({
+        currency: currency.toLowerCase(),
+        amount,
+        netId,
+        note: `tornado-${currency.toLowerCase()}-${amount}-${netId}-${depositObject.noteHex}`,
+        noteHex: depositObject.noteHex,
+        invoice: `tornadoInvoice-${currency.toLowerCase()}-${amount}-${netId}-${depositObject.commitmentHex}`,
+        nullifier,
+        secret,
+        commitmentHex: depositObject.commitmentHex,
+        nullifierHex: depositObject.nullifierHex
+      });
+      return newDeposit;
+    });
+  }
+  static parseNote(noteString) {
+    return __async$6(this, null, function* () {
+      const noteRegex = new RegExp("tornado-(?<currency>\\w+)-(?<amount>[\\d.]+)-(?<netId>\\d+)-0x(?<note>[0-9a-fA-F]{124})", "g");
+      const match = noteRegex.exec(noteString);
+      if (!match) {
+        throw new Error("The note has invalid format");
+      }
+      const matchGroup = match == null ? void 0 : match.groups;
+      const currency = matchGroup.currency.toLowerCase();
+      const amount = matchGroup.amount;
+      const netId = Number(matchGroup.netId);
+      const bytes = bnToBytes("0x" + matchGroup.note);
+      const nullifier = BigInt(leBuff2Int(bytes.slice(0, 31)).toString());
+      const secret = BigInt(leBuff2Int(bytes.slice(31, 62)).toString());
+      const depositObject = yield createDeposit({ nullifier, secret });
+      const invoice = `tornadoInvoice-${currency}-${amount}-${netId}-${depositObject.commitmentHex}`;
+      const newDeposit = new Deposit({
+        currency,
+        amount,
+        netId,
+        note: noteString,
+        noteHex: depositObject.noteHex,
+        invoice,
+        nullifier,
+        secret,
+        commitmentHex: depositObject.commitmentHex,
+        nullifierHex: depositObject.nullifierHex
+      });
+      return newDeposit;
+    });
+  }
+}
+class Invoice {
+  constructor(invoiceString) {
+    const invoiceRegex = new RegExp("tornadoInvoice-(?<currency>\\w+)-(?<amount>[\\d.]+)-(?<netId>\\d+)-0x(?<commitment>[0-9a-fA-F]{64})", "g");
+    const match = invoiceRegex.exec(invoiceString);
+    if (!match) {
+      throw new Error("The note has invalid format");
+    }
+    const matchGroup = match == null ? void 0 : match.groups;
+    const currency = matchGroup.currency.toLowerCase();
+    const amount = matchGroup.amount;
+    const netId = Number(matchGroup.netId);
+    this.currency = currency;
+    this.amount = amount;
+    this.netId = netId;
+    this.commitment = "0x" + matchGroup.commitment;
+    this.invoice = invoiceString;
+  }
+  toString() {
+    return JSON.stringify(
+      {
+        currency: this.currency,
+        amount: this.amount,
+        netId: this.netId,
+        commitment: this.commitment,
+        invoice: this.invoice
+      },
+      null,
+      2
+    );
+  }
+}
+
+function packEncryptedMessage({ nonce, ephemPublicKey, ciphertext }) {
+  const nonceBuf = toFixedHex(bytesToHex(base64ToBytes(nonce)), 24);
+  const ephemPublicKeyBuf = toFixedHex(bytesToHex(base64ToBytes(ephemPublicKey)), 32);
+  const ciphertextBuf = bytesToHex(base64ToBytes(ciphertext));
+  const messageBuff = concatBytes(hexToBytes(nonceBuf), hexToBytes(ephemPublicKeyBuf), hexToBytes(ciphertextBuf));
+  return bytesToHex(messageBuff);
+}
+function unpackEncryptedMessage(encryptedMessage) {
+  const messageBuff = hexToBytes(encryptedMessage);
+  const nonceBuf = bytesToBase64(messageBuff.slice(0, 24));
+  const ephemPublicKeyBuf = bytesToBase64(messageBuff.slice(24, 56));
+  const ciphertextBuf = bytesToBase64(messageBuff.slice(56));
+  return {
+    messageBuff: bytesToHex(messageBuff),
+    version: "x25519-xsalsa20-poly1305",
+    nonce: nonceBuf,
+    ephemPublicKey: ephemPublicKeyBuf,
+    ciphertext: ciphertextBuf
+  };
+}
+class NoteAccount {
+  constructor({ netId, blockNumber, recoveryKey, Echoer: Echoer2 }) {
+    if (!recoveryKey) {
+      recoveryKey = bytesToHex(crypto.getRandomValues(new Uint8Array(32))).slice(2);
+    }
+    this.netId = Math.floor(Number(netId));
+    this.blockNumber = blockNumber;
+    this.recoveryKey = recoveryKey;
+    this.recoveryAddress = computeAddress("0x" + recoveryKey);
+    this.recoveryPublicKey = getEncryptionPublicKey(recoveryKey);
+    this.Echoer = Echoer2;
+  }
+  /**
+   * Intends to mock eth_getEncryptionPublicKey behavior from MetaMask
+   * In order to make the recoveryKey retrival from Echoer possible from the bare private key
+   */
+  static getWalletPublicKey(wallet) {
+    let { privateKey } = wallet;
+    if (privateKey.startsWith("0x")) {
+      privateKey = privateKey.replace("0x", "");
+    }
+    return getEncryptionPublicKey(privateKey);
+  }
+  // This function intends to provide an encrypted value of recoveryKey for an on-chain Echoer backup purpose
+  // Thus, the pubKey should be derived by a Wallet instance or from Web3 wallets
+  // pubKey: base64 encoded 32 bytes key from https://docs.metamask.io/wallet/reference/eth_getencryptionpublickey/
+  getEncryptedAccount(walletPublicKey) {
+    const encryptedData = encrypt({
+      publicKey: walletPublicKey,
+      data: this.recoveryKey,
+      version: "x25519-xsalsa20-poly1305"
+    });
+    const data = packEncryptedMessage(encryptedData);
+    return {
+      // Use this later to save hexPrivateKey generated with
+      // Buffer.from(JSON.stringify(encryptedData)).toString('hex')
+      // As we don't use buffer with this library we should leave UI to do the rest
+      encryptedData,
+      // Data that could be used as an echo(data) params
+      data
+    };
+  }
+  /**
+   * Decrypt Echoer backuped note encryption account with private keys
+   */
+  decryptAccountsWithWallet(wallet, events) {
+    let { privateKey } = wallet;
+    if (privateKey.startsWith("0x")) {
+      privateKey = privateKey.replace("0x", "");
+    }
+    const decryptedEvents = [];
+    for (const event of events) {
+      try {
+        const unpackedMessage = unpackEncryptedMessage(event.encryptedAccount);
+        const recoveryKey = decrypt({
+          encryptedData: unpackedMessage,
+          privateKey
+        });
+        decryptedEvents.push(
+          new NoteAccount({
+            netId: this.netId,
+            blockNumber: event.blockNumber,
+            recoveryKey,
+            Echoer: this.Echoer
+          })
+        );
+      } catch (e) {
+        continue;
+      }
+    }
+    return decryptedEvents;
+  }
+  decryptNotes(events) {
+    const decryptedEvents = [];
+    for (const event of events) {
+      try {
+        const unpackedMessage = unpackEncryptedMessage(event.encryptedNote);
+        const [address, noteHex] = decrypt({
+          encryptedData: unpackedMessage,
+          privateKey: this.recoveryKey
+        }).split("-");
+        decryptedEvents.push({
+          blockNumber: event.blockNumber,
+          address: getAddress(address),
+          noteHex
+        });
+      } catch (e) {
+        continue;
+      }
+    }
+    return decryptedEvents;
+  }
+  encryptNote({ address, noteHex }) {
+    const encryptedData = encrypt({
+      publicKey: this.recoveryPublicKey,
+      data: `${address}-${noteHex}`,
+      version: "x25519-xsalsa20-poly1305"
+    });
+    return packEncryptedMessage(encryptedData);
+  }
+}
+
+const DUMMY_ADDRESS = "0x1111111111111111111111111111111111111111";
+const DUMMY_NONCE = "0x1111111111111111111111111111111111111111111111111111111111111111";
+const DUMMY_WITHDRAW_DATA = "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111";
+function convertETHToTokenAmount(amountInWei, tokenPriceInWei, tokenDecimals = 18) {
+  const tokenDecimalsMultiplier = BigInt(10 ** Number(tokenDecimals));
+  return BigInt(amountInWei) * tokenDecimalsMultiplier / BigInt(tokenPriceInWei);
+}
+class TornadoFeeOracle {
+  constructor(ovmGasPriceOracle) {
+    if (ovmGasPriceOracle) {
+      this.ovmGasPriceOracle = ovmGasPriceOracle;
+    }
+  }
+  /**
+   * Calculate L1 fee for op-stack chains
+   *
+   * This is required since relayers would pay the full transaction fees for users
+   */
+  fetchL1OptimismFee(tx) {
+    if (!this.ovmGasPriceOracle) {
+      return new Promise((resolve) => resolve(BigInt(0)));
+    }
+    if (!tx) {
+      tx = {
+        type: 0,
+        gasLimit: 1e6,
+        nonce: Number(DUMMY_NONCE),
+        data: DUMMY_WITHDRAW_DATA,
+        gasPrice: parseUnits("1", "gwei"),
+        from: DUMMY_ADDRESS,
+        to: DUMMY_ADDRESS
+      };
+    }
+    return this.ovmGasPriceOracle.getL1Fee.staticCall(Transaction.from(tx).unsignedSerialized);
+  }
+  /**
+   * We don't need to distinguish default refunds by tokens since most users interact with other defi protocols after withdrawal
+   * So we default with 1M gas which is enough for two or three swaps
+   * Using 30 gwei for default but it is recommended to supply cached gasPrice value from the UI
+   */
+  defaultEthRefund(gasPrice, gasLimit) {
+    return (gasPrice ? BigInt(gasPrice) : parseUnits("30", "gwei")) * BigInt(gasLimit || 1e6);
+  }
+  /**
+   * Calculates token amount for required ethRefund purchases required to calculate fees
+   */
+  calculateTokenAmount(ethRefund, tokenPriceInEth, tokenDecimals) {
+    return convertETHToTokenAmount(ethRefund, tokenPriceInEth, tokenDecimals);
+  }
+  /**
+   * Warning: For tokens you need to check if the fees are above denomination
+   * (Usually happens for small denomination pool or if the gas price is high)
+   */
+  calculateRelayerFee({
+    gasPrice,
+    gasLimit = 6e5,
+    l1Fee = 0,
+    denomination,
+    ethRefund = BigInt(0),
+    tokenPriceInWei,
+    tokenDecimals = 18,
+    relayerFeePercent = 0.33,
+    isEth = true,
+    premiumPercent = 20
+  }) {
+    const gasCosts = BigInt(gasPrice) * BigInt(gasLimit) + BigInt(l1Fee);
+    const relayerFee = BigInt(denomination) * BigInt(Math.floor(1e4 * relayerFeePercent)) / BigInt(1e4 * 100);
+    if (isEth) {
+      return (gasCosts + relayerFee) * BigInt(premiumPercent ? 100 + premiumPercent : 100) / BigInt(100);
+    }
+    const feeInEth = gasCosts + BigInt(ethRefund);
+    return (convertETHToTokenAmount(feeInEth, tokenPriceInWei, tokenDecimals) + relayerFee) * BigInt(premiumPercent ? 100 + premiumPercent : 100) / BigInt(100);
+  }
+}
+
+var __async$5 = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+class Mimc {
+  constructor() {
+    this.mimcPromise = this.initMimc();
+  }
+  initMimc() {
+    return __async$5(this, null, function* () {
+      this.sponge = yield buildMimcSponge();
+      this.hash = (left, right) => {
+        var _a, _b;
+        return (_b = this.sponge) == null ? void 0 : _b.F.toString((_a = this.sponge) == null ? void 0 : _a.multiHash([BigInt(left), BigInt(right)]));
+      };
+    });
+  }
+  getHash() {
+    return __async$5(this, null, function* () {
+      yield this.mimcPromise;
+      return {
+        sponge: this.sponge,
+        hash: this.hash
+      };
+    });
+  }
+}
+const mimc = new Mimc();
+
+var __async$4 = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+class MerkleTreeService {
+  constructor({
+    netId,
+    amount,
+    currency,
+    Tornado,
+    commitmentHex,
+    merkleTreeHeight = 20,
+    emptyElement = "21663839004416932945382355908790599225266501822907911457504978515578255421292",
+    merkleWorkerPath
+  }) {
+    const instanceName = `${netId}_${currency}_${amount}`;
+    this.currency = currency;
+    this.amount = amount;
+    this.netId = Number(netId);
+    this.Tornado = Tornado;
+    this.instanceName = instanceName;
+    this.commitmentHex = commitmentHex;
+    this.merkleTreeHeight = merkleTreeHeight;
+    this.emptyElement = emptyElement;
+    this.merkleWorkerPath = merkleWorkerPath;
+  }
+  createTree(events) {
+    return __async$4(this, null, function* () {
+      const { hash: hashFunction } = yield mimc.getHash();
+      if (this.merkleWorkerPath) {
+        console.log("Using merkleWorker\n");
+        try {
+          if (isNode) {
+            const merkleWorkerPromise = new Promise((resolve, reject) => {
+              const worker = new Worker$1(this.merkleWorkerPath, {
+                workerData: {
+                  merkleTreeHeight: this.merkleTreeHeight,
+                  elements: events,
+                  zeroElement: this.emptyElement
+                }
+              });
+              worker.on("message", resolve);
+              worker.on("error", reject);
+              worker.on("exit", (code) => {
+                if (code !== 0) {
+                  reject(new Error(`Worker stopped with exit code ${code}`));
+                }
+              });
+            });
+            return MerkleTree.deserialize(JSON.parse(yield merkleWorkerPromise), hashFunction);
+          } else {
+            const merkleWorkerPromise = new Promise((resolve, reject) => {
+              const worker = new Worker(this.merkleWorkerPath);
+              worker.onmessage = (e) => {
+                resolve(e.data);
+              };
+              worker.onerror = (e) => {
+                reject(e);
+              };
+              worker.postMessage({
+                merkleTreeHeight: this.merkleTreeHeight,
+                elements: events,
+                zeroElement: this.emptyElement
+              });
+            });
+            return MerkleTree.deserialize(JSON.parse(yield merkleWorkerPromise), hashFunction);
+          }
+        } catch (err) {
+          console.log("merkleWorker failed, falling back to synchronous merkle tree");
+          console.log(err);
+        }
+      }
+      return new MerkleTree(this.merkleTreeHeight, events, {
+        zeroElement: this.emptyElement,
+        hashFunction
+      });
+    });
+  }
+  createPartialTree(_0) {
+    return __async$4(this, arguments, function* ({ edge, elements }) {
+      const { hash: hashFunction } = yield mimc.getHash();
+      if (this.merkleWorkerPath) {
+        console.log("Using merkleWorker\n");
+        try {
+          if (isNode) {
+            const merkleWorkerPromise = new Promise((resolve, reject) => {
+              const worker = new Worker$1(this.merkleWorkerPath, {
+                workerData: {
+                  merkleTreeHeight: this.merkleTreeHeight,
+                  edge,
+                  elements,
+                  zeroElement: this.emptyElement
+                }
+              });
+              worker.on("message", resolve);
+              worker.on("error", reject);
+              worker.on("exit", (code) => {
+                if (code !== 0) {
+                  reject(new Error(`Worker stopped with exit code ${code}`));
+                }
+              });
+            });
+            return PartialMerkleTree.deserialize(JSON.parse(yield merkleWorkerPromise), hashFunction);
+          } else {
+            const merkleWorkerPromise = new Promise((resolve, reject) => {
+              const worker = new Worker(this.merkleWorkerPath);
+              worker.onmessage = (e) => {
+                resolve(e.data);
+              };
+              worker.onerror = (e) => {
+                reject(e);
+              };
+              worker.postMessage({
+                merkleTreeHeight: this.merkleTreeHeight,
+                edge,
+                elements,
+                zeroElement: this.emptyElement
+              });
+            });
+            return PartialMerkleTree.deserialize(JSON.parse(yield merkleWorkerPromise), hashFunction);
+          }
+        } catch (err) {
+          console.log("merkleWorker failed, falling back to synchronous merkle tree");
+          console.log(err);
+        }
+      }
+      return new PartialMerkleTree(this.merkleTreeHeight, edge, elements, {
+        zeroElement: this.emptyElement,
+        hashFunction
+      });
+    });
+  }
+  verifyTree(events) {
+    return __async$4(this, null, function* () {
+      console.log(
+        `
+Creating deposit tree for ${this.netId} ${this.amount} ${this.currency.toUpperCase()} would take a while
+`
+      );
+      console.time("Created tree in");
+      const tree = yield this.createTree(events.map(({ commitment }) => commitment));
+      console.timeEnd("Created tree in");
+      console.log("");
+      const isKnownRoot = yield this.Tornado.isKnownRoot(toFixedHex(BigInt(tree.root)));
+      if (!isKnownRoot) {
+        const errMsg = `Deposit Event ${this.netId} ${this.amount} ${this.currency} is invalid`;
+        throw new Error(errMsg);
+      }
+      return tree;
+    });
+  }
+}
 
 function parseNumber(value) {
   if (!value || isNaN(Number(value))) {
@@ -6554,6 +7267,17 @@ function parseKey(value) {
   }
   return value;
 }
+function parseRecoveryKey(value) {
+  if (!value) {
+    throw new InvalidArgumentError("Invalid Recovery Key");
+  }
+  try {
+    computeAddress("0x" + value);
+  } catch (e) {
+    throw new InvalidArgumentError("Invalid Recovery Key");
+  }
+  return value;
+}
 
 class TokenPriceOracle {
   constructor(provider, multicall2, oracle) {
@@ -6576,26 +7300,26 @@ class TokenPriceOracle {
   }
 }
 
-var __defProp = Object.defineProperty;
-var __defProps = Object.defineProperties;
-var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
-var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __propIsEnum = Object.prototype.propertyIsEnumerable;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues = (a, b) => {
+var __defProp$1 = Object.defineProperty;
+var __defProps$1 = Object.defineProperties;
+var __getOwnPropDescs$1 = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols$1 = Object.getOwnPropertySymbols;
+var __hasOwnProp$1 = Object.prototype.hasOwnProperty;
+var __propIsEnum$1 = Object.prototype.propertyIsEnumerable;
+var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues$1 = (a, b) => {
   for (var prop in b || (b = {}))
-    if (__hasOwnProp.call(b, prop))
-      __defNormalProp(a, prop, b[prop]);
-  if (__getOwnPropSymbols)
-    for (var prop of __getOwnPropSymbols(b)) {
-      if (__propIsEnum.call(b, prop))
-        __defNormalProp(a, prop, b[prop]);
+    if (__hasOwnProp$1.call(b, prop))
+      __defNormalProp$1(a, prop, b[prop]);
+  if (__getOwnPropSymbols$1)
+    for (var prop of __getOwnPropSymbols$1(b)) {
+      if (__propIsEnum$1.call(b, prop))
+        __defNormalProp$1(a, prop, b[prop]);
     }
   return a;
 };
-var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-var __async$2 = (__this, __arguments, generator) => {
+var __spreadProps$1 = (a, b) => __defProps$1(a, __getOwnPropDescs$1(b));
+var __async$3 = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -6623,11 +7347,11 @@ function parseSemanticVersion(version) {
 }
 function isRelayerUpdated(relayerVersion, netId) {
   const { major, patch, prerelease } = parseSemanticVersion(relayerVersion);
-  const requiredMajor = netId === 1 ? "4" : "5";
+  const requiredMajor = netId === NetId.MAINNET ? "4" : "5";
   const isUpdatedMajor = major === requiredMajor;
   if (prerelease)
     return false;
-  return isUpdatedMajor && (Number(patch) >= 5 || Number(netId) !== 1);
+  return isUpdatedMajor && (Number(patch) >= 5 || netId !== NetId.MAINNET);
 }
 function calculateScore({ stakeBalance, tornadoServiceFee }, minFee = 0.33, maxFee = 0.53) {
   if (tornadoServiceFee < minFee) {
@@ -6649,9 +7373,15 @@ function getWeightRandom(weightsScores, random) {
   }
   return Math.floor(Math.random() * weightsScores.length);
 }
+function getSupportedInstances(instanceList) {
+  const rawList = Object.values(instanceList).map(({ instanceAddress }) => {
+    return Object.values(instanceAddress);
+  }).flat();
+  return rawList.map((l) => getAddress(l));
+}
 function pickWeightedRandomRelayer(relayers, netId) {
   let minFee, maxFee;
-  if (Number(netId) !== 1) {
+  if (netId !== NetId.MAINNET) {
     minFee = 0.01;
     maxFee = 0.3;
   }
@@ -6665,19 +7395,19 @@ function pickWeightedRandomRelayer(relayers, netId) {
 }
 class RelayerClient {
   constructor({ netId, config, Aggregator, fetchDataOptions: fetchDataOptions2 }) {
-    this.netId = Number(netId);
+    this.netId = netId;
     this.config = config;
     this.Aggregator = Aggregator;
     this.fetchDataOptions = fetchDataOptions2;
   }
   askRelayerStatus(_0) {
-    return __async$2(this, arguments, function* ({
+    return __async$3(this, arguments, function* ({
       hostname,
       relayerAddress
     }) {
       var _a, _b;
       const url = `https://${!hostname.endsWith("/") ? hostname + "/" : hostname}`;
-      const rawStatus = yield fetchData(`${url}status`, __spreadProps(__spreadValues({}, this.fetchDataOptions), {
+      const rawStatus = yield fetchData(`${url}status`, __spreadProps$1(__spreadValues$1({}, this.fetchDataOptions), {
         headers: {
           "Content-Type": "application/json, application/x-www-form-urlencoded"
         },
@@ -6688,7 +7418,7 @@ class RelayerClient {
       if (!statusValidator(rawStatus)) {
         throw new Error("Invalid status schema");
       }
-      const status = __spreadProps(__spreadValues({}, rawStatus), {
+      const status = __spreadProps$1(__spreadValues$1({}, rawStatus), {
         url
       });
       if (status.currentQueue > 5) {
@@ -6697,7 +7427,7 @@ class RelayerClient {
       if (status.netId !== this.netId) {
         throw new Error("This relayer serves a different network");
       }
-      if (relayerAddress && this.netId === 1 && status.rewardAccount !== relayerAddress) {
+      if (relayerAddress && this.netId === NetId.MAINNET && status.rewardAccount !== relayerAddress) {
         throw new Error("The Relayer reward address must match registered address");
       }
       if (!isRelayerUpdated(status.version, this.netId)) {
@@ -6707,7 +7437,8 @@ class RelayerClient {
     });
   }
   filterRelayer(curr, relayer, subdomains, debugRelayer = false) {
-    return __async$2(this, null, function* () {
+    return __async$3(this, null, function* () {
+      var _a;
       const { ensSubdomainKey } = this.config;
       const subdomainIndex = subdomains.indexOf(ensSubdomainKey);
       const mainnetSubdomain = curr.records[0];
@@ -6728,7 +7459,9 @@ class RelayerClient {
             ensName,
             stakeBalance,
             relayerAddress,
-            rewardAccount: status.rewardAccount,
+            rewardAccount: getAddress(status.rewardAccount),
+            instances: getSupportedInstances(status.instances),
+            gasPrice: (_a = status.gasPrices) == null ? void 0 : _a.fast,
             ethPrices: status.ethPrices,
             currentQueue: status.currentQueue,
             tornadoServiceFee: status.tornadoServiceFee
@@ -6757,7 +7490,7 @@ class RelayerClient {
     });
   }
   getValidRelayers(relayers, subdomains, debugRelayer = false) {
-    return __async$2(this, null, function* () {
+    return __async$3(this, null, function* () {
       const relayersSet = /* @__PURE__ */ new Set();
       const uniqueRelayers = relayers.reverse().filter(({ ensName }) => {
         if (!relayersSet.has(ensName)) {
@@ -6788,9 +7521,9 @@ class RelayerClient {
     return pickWeightedRandomRelayer(relayers, this.netId);
   }
   tornadoWithdraw(_0) {
-    return __async$2(this, arguments, function* ({ contract, proof, args }) {
+    return __async$3(this, arguments, function* ({ contract, proof, args }) {
       const { url } = this.selectedRelayer;
-      const withdrawResponse = yield fetchData(`${url}v1/tornadoWithdraw`, __spreadProps(__spreadValues({}, this.fetchDataOptions), {
+      const withdrawResponse = yield fetchData(`${url}v1/tornadoWithdraw`, __spreadProps$1(__spreadValues$1({}, this.fetchDataOptions), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -6810,7 +7543,7 @@ class RelayerClient {
       console.log(`Job submitted: ${jobUrl}
 `);
       while (!relayerStatus || !["FAILED", "CONFIRMED"].includes(relayerStatus)) {
-        const jobResponse = yield fetchData(jobUrl, __spreadProps(__spreadValues({}, this.fetchDataOptions), {
+        const jobResponse = yield fetchData(jobUrl, __spreadProps$1(__spreadValues$1({}, this.fetchDataOptions), {
           method: "GET",
           headers: {
             "Content-Type": "application/json"
@@ -6850,7 +7583,7 @@ class RelayerClient {
   }
 }
 
-var __async$1 = (__this, __arguments, generator) => {
+var __async$2 = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
       try {
@@ -6871,7 +7604,7 @@ var __async$1 = (__this, __arguments, generator) => {
   });
 };
 function getTokenBalances(_0) {
-  return __async$1(this, arguments, function* ({
+  return __async$2(this, arguments, function* ({
     provider,
     Multicall: Multicall2,
     currencyName,
@@ -6934,6 +7667,120 @@ function getTokenBalances(_0) {
   });
 }
 
+var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __objRest = (source, exclude) => {
+  var target = {};
+  for (var prop in source)
+    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+      target[prop] = source[prop];
+  if (source != null && __getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(source)) {
+      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+        target[prop] = source[prop];
+    }
+  return target;
+};
+var __async$1 = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+class TreeCache {
+  constructor({ netId, amount, currency, userDirectory, PARTS_COUNT = 4 }) {
+    this.netId = netId;
+    this.amount = amount;
+    this.currency = currency;
+    this.userDirectory = userDirectory;
+    this.PARTS_COUNT = PARTS_COUNT;
+  }
+  getInstanceName() {
+    return `deposits_${this.netId}_${this.currency}_${this.amount}`;
+  }
+  createTree(events, tree) {
+    return __async$1(this, null, function* () {
+      const bloom = new BloomFilter(events.length);
+      console.log(`Creating cached tree for ${this.getInstanceName()}
+`);
+      const eventsData = events.reduce(
+        (acc, _a, i) => {
+          var _b = _a, { leafIndex, commitment } = _b, rest = __objRest(_b, ["leafIndex", "commitment"]);
+          if (leafIndex !== i) {
+            throw new Error(`leafIndex (${leafIndex}) !== i (${i})`);
+          }
+          acc[commitment] = __spreadProps(__spreadValues({}, rest), { leafIndex });
+          return acc;
+        },
+        {}
+      );
+      const slices = tree.getTreeSlices(this.PARTS_COUNT);
+      yield Promise.all(
+        slices.map((slice, index) => __async$1(this, null, function* () {
+          const metadata = slice.elements.reduce((acc, curr) => {
+            if (index < this.PARTS_COUNT - 1) {
+              bloom.add(curr);
+            }
+            acc.push(eventsData[curr]);
+            return acc;
+          }, []);
+          const dataString2 = JSON.stringify(
+            __spreadProps(__spreadValues({}, slice), {
+              metadata
+            }),
+            null,
+            2
+          ) + "\n";
+          const fileName2 = `${this.getInstanceName()}_slice${index + 1}.json`;
+          yield saveUserFile({
+            fileName: fileName2,
+            userDirectory: this.userDirectory,
+            dataString: dataString2
+          });
+        }))
+      );
+      const dataString = bloom.serialize() + "\n";
+      const fileName = `${this.getInstanceName()}_bloom.json`;
+      yield saveUserFile({
+        fileName,
+        userDirectory: this.userDirectory,
+        dataString
+      });
+    });
+  }
+}
+
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
@@ -6992,4 +7839,4 @@ function calculateSnarkProof(input, circuit, provingKey) {
   });
 }
 
-export { BaseDepositsService, BaseEncryptedNotesService, BaseEventsService, BaseGovernanceService, BaseRegistryService, BatchBlockService, BatchEventsService, BatchTransactionService, DEPOSIT, Deposit, ENS__factory, ERC20__factory, GET_DEPOSITS, GET_ENCRYPTED_NOTES, GET_NOTE_ACCOUNTS, GET_REGISTERED, GET_STATISTIC, GET_WITHDRAWALS, GasPriceOracle__factory, Invoice, MIN_STAKE_BALANCE, MerkleTreeService, Mimc, Multicall__factory, NodeDepositsService, NodeEncryptedNotesService, NodeGovernanceService, NodeRegistryService, OffchainOracle__factory, OvmGasPriceOracle__factory, Pedersen, RelayerClient, ReverseRecords__factory, TokenPriceOracle, TornadoBrowserProvider, TornadoFeeOracle, TornadoRpcSigner, TornadoVoidSigner, TornadoWallet, WITHDRAWAL, _META, ajv, base64ToBytes, bigIntReplacer, blockSyncInterval, bnToBytes, buffPedersenHash, bufferToBytes, bytesToBN, bytesToBase64, bytesToHex, calculateScore, calculateSnarkProof, chunk, convertETHToTokenAmount, createDeposit, defaultUserAgent, download, enabledChains, existsAsync, index as factories, fetch, fetchData, fetchGetUrlFunc, getAllDeposits, getAllEncryptedNotes, getAllRegisters, getAllWithdrawals, getDeposits, getEncryptedNotes, getGasOraclePlugin, getHttpAgent, getMeta, getNoteAccounts, getProvider, getProviderWithNetId, getRegisters, getStatistic, getStatusSchema, getTokenBalances, getWeightRandom, getWithdrawals, isNode, isRelayerUpdated, jobsSchema, leBuff2Int, leInt2Buff, loadCachedEvents, loadSavedEvents, mimc, multicall, networkConfig, parseAddress, parseKey, parseMnemonic, parseNumber, parseRelayer, parseSemanticVersion, parseUrl, pedersen, pickWeightedRandomRelayer, populateTransaction, queryGraph, rBigInt, saveEvents, sleep, subdomains, substring, toFixedHex, toFixedLength, unzipAsync, validateUrl, zipAsync };
+export { BaseDepositsService, BaseEchoService, BaseEncryptedNotesService, BaseEventsService, BaseGovernanceService, BaseRegistryService, BatchBlockService, BatchEventsService, BatchTransactionService, DEPOSIT, Deposit, ENS__factory, ERC20__factory, GET_DEPOSITS, GET_ECHO_EVENTS, GET_ENCRYPTED_NOTES, GET_GOVERNANCE_APY, GET_GOVERNANCE_EVENTS, GET_NOTE_ACCOUNTS, GET_REGISTERED, GET_STATISTIC, GET_WITHDRAWALS, GasPriceOracle__factory, Invoice, MIN_STAKE_BALANCE, MerkleTreeService, Mimc, Multicall__factory, NetId, NodeDepositsService, NodeEchoService, NodeEncryptedNotesService, NodeGovernanceService, NodeRegistryService, NoteAccount, OffchainOracle__factory, OvmGasPriceOracle__factory, Pedersen, RelayerClient, ReverseRecords__factory, TokenPriceOracle, TornadoBrowserProvider, TornadoFeeOracle, TornadoRpcSigner, TornadoVoidSigner, TornadoWallet, TreeCache, WITHDRAWAL, _META, addNetwork, ajv, base64ToBytes, bigIntReplacer, bnToBytes, buffPedersenHash, bufferToBytes, bytesToBN, bytesToBase64, bytesToHex, calculateScore, calculateSnarkProof, chunk, concatBytes, convertETHToTokenAmount, createDeposit, crypto, customConfig, defaultConfig, defaultUserAgent, download, enabledChains, existsAsync, index as factories, fetch, fetchData, fetchGetUrlFunc, getAllDeposits, getAllEncryptedNotes, getAllGovernanceEvents, getAllGraphEchoEvents, getAllRegisters, getAllWithdrawals, getConfig, getDeposits, getEncryptedNotes, getGasOraclePlugin, getGovernanceEvents, getGraphEchoEvents, getHttpAgent, getInstanceByAddress, getMeta, getNetworkConfig, getNoteAccounts, getProvider, getProviderWithNetId, getRegisters, getStatistic, getStatusSchema, getSubdomains, getSupportedInstances, getTokenBalances, getWeightRandom, getWithdrawals, hexToBytes, isNode, isRelayerUpdated, jobsSchema, leBuff2Int, leInt2Buff, loadCachedEvents, loadSavedEvents, mimc, multicall, packEncryptedMessage, parseAddress, parseKey, parseMnemonic, parseNumber, parseRecoveryKey, parseRelayer, parseSemanticVersion, parseUrl, pedersen, pickWeightedRandomRelayer, populateTransaction, queryGraph, rBigInt, saveUserFile, sleep, substring, toFixedHex, toFixedLength, unpackEncryptedMessage, unzipAsync, validateUrl, zipAsync };

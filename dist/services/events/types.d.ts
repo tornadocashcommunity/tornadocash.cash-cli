@@ -39,6 +39,7 @@ export type GovernanceUndelegatedEvents = GovernanceEvents & {
     account: string;
     delegateFrom: string;
 };
+export type AllGovernanceEvents = GovernanceProposalCreatedEvents | GovernanceVotedEvents | GovernanceDelegatedEvents | GovernanceUndelegatedEvents;
 export type RegistersEvents = MinimalEvents & RelayerParams;
 export type DepositsEvents = MinimalEvents & {
     commitment: string;
@@ -51,6 +52,10 @@ export type WithdrawalsEvents = MinimalEvents & {
     to: string;
     fee: string;
     timestamp: number;
+};
+export type EchoEvents = MinimalEvents & {
+    address: string;
+    encryptedAccount: string;
 };
 export type EncryptedNotesEvents = MinimalEvents & {
     encryptedNote: string;

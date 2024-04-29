@@ -1,3 +1,17 @@
+/**
+ * Type of default supported networks
+ */
+export declare enum NetId {
+    MAINNET = 1,
+    BSC = 56,
+    POLYGON = 137,
+    OPTIMISM = 10,
+    ARBITRUM = 42161,
+    GNOSIS = 100,
+    AVALANCHE = 43114,
+    SEPOLIA = 11155111
+}
+export type NetIdType = NetId | number;
 export interface RpcUrl {
     name: string;
     url: string;
@@ -37,20 +51,20 @@ export type Config = {
     };
     nativeCurrency: string;
     currencyName: string;
-    explorerUrl: {
-        tx: string;
-        address: string;
-        block: string;
-    };
+    explorerUrl: string;
     merkleTreeHeight: number;
     emptyElement: string;
     networkName: string;
     deployedBlock: number;
     rpcUrls: RpcUrls;
-    multicall: string;
+    multicallContract: string;
     routerContract: string;
-    registryContract?: string;
     echoContract: string;
+    offchainOracleContract?: string;
+    tornContract?: string;
+    governanceContract?: string;
+    stakingRewardsContract?: string;
+    registryContract?: string;
     aggregatorContract?: string;
     reverseRecordsContract?: string;
     gasPriceOracleContract?: string;
@@ -58,6 +72,7 @@ export type Config = {
     ovmGasPriceOracleContract?: string;
     tornadoSubgraph: string;
     registrySubgraph?: string;
+    governanceSubgraph?: string;
     subgraphs: SubgraphUrls;
     tokens: TokenInstances;
     optionalTokens?: string[];
@@ -70,17 +85,32 @@ export type Config = {
         REGISTRY_BLOCK?: number;
         MINING_BLOCK_TIME?: number;
     };
-    'torn.contract.tornadocash.eth'?: string;
-    'governance.contract.tornadocash.eth'?: string;
-    'staking-rewards.contract.tornadocash.eth'?: string;
-    'tornado-router.contract.tornadocash.eth'?: string;
-    'tornado-proxy-light.contract.tornadocash.eth'?: string;
 };
 export type networkConfig = {
-    [key in string]: Config;
+    [key in NetIdType]: Config;
 };
-export declare const blockSyncInterval = 10000;
-export declare const enabledChains: string[];
-export declare const networkConfig: networkConfig;
-export declare const subdomains: string[];
-export default networkConfig;
+export declare const defaultConfig: networkConfig;
+export declare const enabledChains: number[];
+/**
+ * Custom config object to extend default config
+ *
+ * Inspired by getUrlFunc from ethers.js
+ * https://github.com/ethers-io/ethers.js/blob/v6/src.ts/utils/fetch.ts#L59
+ */
+export declare let customConfig: networkConfig;
+/**
+ * Add or override existing network config object
+ *
+ * Could be also called on the UI hook so that the UI could allow people to use custom privacy pools
+ */
+export declare function addNetwork(newConfig: networkConfig): void;
+export declare function getNetworkConfig(): networkConfig;
+export declare function getConfig(netId: NetIdType): Config;
+export declare function getInstanceByAddress({ netId, address }: {
+    netId: NetIdType;
+    address: string;
+}): {
+    amount: string;
+    currency: string;
+} | undefined;
+export declare function getSubdomains(): string[];

@@ -1,13 +1,14 @@
 import 'dotenv/config';
 import { Command } from 'commander';
-import { JsonRpcProvider, Provider, TransactionLike, Wallet, VoidSigner, BigNumberish } from 'ethers';
-import { getProviderOptions, TornadoWallet, TornadoVoidSigner, Relayer, RelayerInfo, RelayerError, RelayerClient, fetchDataOptions, Config } from './services';
+import { JsonRpcProvider, Provider, TransactionLike, Wallet, VoidSigner } from 'ethers';
+import { getProviderOptions, TornadoWallet, TornadoVoidSigner, Relayer, RelayerInfo, RelayerError, RelayerClient, fetchDataOptions, NetIdType, Config } from './services';
 export type commonProgramOptions = {
     rpc?: string;
     ethRpc?: string;
     graph?: string;
     ethGraph?: string;
     disableGraph?: boolean;
+    accountKey?: string;
     relayer?: string;
     walletWithdrawal?: boolean;
     torPort?: number;
@@ -29,7 +30,7 @@ export declare function getProgramOptions(options: commonProgramOptions): Promis
     fetchDataOptions: fetchDataOptions;
 }>;
 export declare function getProgramGraphAPI(options: commonProgramOptions, config: Config): string;
-export declare function getProgramProvider(netId: BigNumberish, rpcUrl: string | undefined, config: Config, providerOptions?: getProviderOptions): JsonRpcProvider;
+export declare function getProgramProvider(netId: NetIdType, rpcUrl: string | undefined, config: Config, providerOptions?: getProviderOptions): JsonRpcProvider;
 export declare function getProgramSigner({ options, provider, }: {
     options: commonProgramOptions;
     provider: Provider;
@@ -37,7 +38,7 @@ export declare function getProgramSigner({ options, provider, }: {
 export declare function getProgramRelayer({ options, fetchDataOptions, netId, }: {
     options: commonProgramOptions;
     fetchDataOptions?: fetchDataOptions;
-    netId: number | string;
+    netId: NetIdType;
 }): Promise<{
     validRelayers?: RelayerInfo[] | Relayer[];
     invalidRelayers?: RelayerError[];

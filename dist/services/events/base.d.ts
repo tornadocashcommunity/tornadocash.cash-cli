@@ -1,12 +1,13 @@
 import { BaseContract, Provider, EventLog, ContractEventName } from 'ethers';
-import type { Tornado, TornadoRouter, TornadoProxyLight, Governance, RelayerRegistry } from '@tornado/contracts';
+import type { Tornado, TornadoRouter, TornadoProxyLight, Governance, RelayerRegistry, Echoer } from '@tornado/contracts';
 import { BatchEventsService, BatchBlockService, BatchTransactionService, BatchEventOnProgress, BatchBlockOnProgress } from '../batch';
 import { fetchDataOptions } from '../providers';
-import type { BaseEvents, MinimalEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, GovernanceProposalCreatedEvents, GovernanceVotedEvents, GovernanceDelegatedEvents, GovernanceUndelegatedEvents, RegistersEvents } from './types';
+import type { NetIdType } from '../networkConfig';
+import type { BaseEvents, MinimalEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, AllGovernanceEvents, RegistersEvents, EchoEvents } from './types';
 export declare const DEPOSIT = "deposit";
 export declare const WITHDRAWAL = "withdrawal";
 export type BaseEventsServiceConstructor = {
-    netId: number | string;
+    netId: NetIdType;
     provider: Provider;
     graphApi?: string;
     subgraphName?: string;
@@ -28,7 +29,7 @@ export type BaseGraphParams = {
     onProgress?: BatchGraphOnProgress;
 };
 export declare class BaseEventsService<EventType extends MinimalEvents> {
-    netId: number | string;
+    netId: NetIdType;
     provider: Provider;
     graphApi?: string;
     subgraphName?: string;
@@ -81,7 +82,7 @@ export declare class BaseEventsService<EventType extends MinimalEvents> {
     }>;
 }
 export type BaseDepositsServiceConstructor = {
-    netId: number | string;
+    netId: NetIdType;
     provider: Provider;
     graphApi?: string;
     subgraphName?: string;
@@ -110,8 +111,27 @@ export declare class BaseDepositsService extends BaseEventsService<DepositsEvent
         events: (DepositsEvents | WithdrawalsEvents)[];
     }): void;
 }
+export type BaseEchoServiceConstructor = {
+    netId: NetIdType;
+    provider: Provider;
+    graphApi?: string;
+    subgraphName?: string;
+    Echoer: Echoer;
+    deployedBlock?: number;
+    fetchDataOptions?: fetchDataOptions;
+};
+export declare class BaseEchoService extends BaseEventsService<EchoEvents> {
+    constructor({ netId, provider, graphApi, subgraphName, Echoer, deployedBlock, fetchDataOptions, }: BaseEchoServiceConstructor);
+    getInstanceName(): string;
+    getType(): string;
+    getGraphMethod(): string;
+    formatEvents(events: EventLog[]): Promise<EchoEvents[]>;
+    getEventsFromGraph({ fromBlock }: {
+        fromBlock: number;
+    }): Promise<BaseEvents<EchoEvents>>;
+}
 export type BaseEncryptedNotesServiceConstructor = {
-    netId: number | string;
+    netId: NetIdType;
     provider: Provider;
     graphApi?: string;
     subgraphName?: string;
@@ -126,9 +146,8 @@ export declare class BaseEncryptedNotesService extends BaseEventsService<Encrypt
     getGraphMethod(): string;
     formatEvents(events: EventLog[]): Promise<EncryptedNotesEvents[]>;
 }
-export type BaseGovernanceEventTypes = GovernanceProposalCreatedEvents | GovernanceVotedEvents | GovernanceDelegatedEvents | GovernanceUndelegatedEvents;
 export type BaseGovernanceServiceConstructor = {
-    netId: number | string;
+    netId: NetIdType;
     provider: Provider;
     graphApi?: string;
     subgraphName?: string;
@@ -136,19 +155,19 @@ export type BaseGovernanceServiceConstructor = {
     deployedBlock?: number;
     fetchDataOptions?: fetchDataOptions;
 };
-export declare class BaseGovernanceService extends BaseEventsService<BaseGovernanceEventTypes> {
+export declare class BaseGovernanceService extends BaseEventsService<AllGovernanceEvents> {
     batchTransactionService: BatchTransactionService;
     constructor({ netId, provider, graphApi, subgraphName, Governance, deployedBlock, fetchDataOptions, }: BaseGovernanceServiceConstructor);
     getInstanceName(): string;
     getType(): string;
     getGraphMethod(): string;
-    formatEvents(events: EventLog[]): Promise<BaseGovernanceEventTypes[]>;
+    formatEvents(events: EventLog[]): Promise<AllGovernanceEvents[]>;
     getEventsFromGraph({ fromBlock }: {
         fromBlock: number;
-    }): Promise<BaseEvents<BaseGovernanceEventTypes>>;
+    }): Promise<BaseEvents<AllGovernanceEvents>>;
 }
 export type BaseRegistryServiceConstructor = {
-    netId: number | string;
+    netId: NetIdType;
     provider: Provider;
     graphApi?: string;
     subgraphName?: string;

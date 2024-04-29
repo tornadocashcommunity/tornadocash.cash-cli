@@ -1,5 +1,5 @@
 import { fetchDataOptions } from '../providers';
-import type { BaseGraphEvents, RegistersEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, BatchGraphOnProgress } from '../events';
+import type { BaseGraphEvents, RegistersEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, BatchGraphOnProgress, EchoEvents, AllGovernanceEvents } from '../events';
 export * from './queries';
 export type queryGraphParams = {
     graphApi: string;
@@ -165,6 +165,29 @@ export interface getNoteAccountsReturns {
     lastSyncBlock: null | number;
 }
 export declare function getNoteAccounts({ graphApi, subgraphName, address, fetchDataOptions, }: getNoteAccountsParams): Promise<getNoteAccountsReturns>;
+export interface GraphEchoEvents {
+    noteAccounts: {
+        id: string;
+        blockNumber: string;
+        address: string;
+        encryptedAccount: string;
+    }[];
+    _meta: {
+        block: {
+            number: number;
+        };
+        hasIndexingErrors: boolean;
+    };
+}
+export interface getGraphEchoEventsParams {
+    graphApi: string;
+    subgraphName: string;
+    fromBlock: number;
+    fetchDataOptions?: fetchDataOptions;
+    onProgress?: BatchGraphOnProgress;
+}
+export declare function getGraphEchoEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions, }: getGraphEchoEventsParams): Promise<GraphEchoEvents>;
+export declare function getAllGraphEchoEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions, onProgress, }: getGraphEchoEventsParams): Promise<BaseGraphEvents<EchoEvents>>;
 export interface GraphEncryptedNotes {
     encryptedNotes: {
         blockNumber: string;
@@ -188,3 +211,56 @@ export interface getEncryptedNotesParams {
 }
 export declare function getEncryptedNotes({ graphApi, subgraphName, fromBlock, fetchDataOptions, }: getEncryptedNotesParams): Promise<GraphEncryptedNotes>;
 export declare function getAllEncryptedNotes({ graphApi, subgraphName, fromBlock, fetchDataOptions, onProgress, }: getEncryptedNotesParams): Promise<BaseGraphEvents<EncryptedNotesEvents>>;
+export interface GraphGovernanceEvents {
+    proposals: {
+        blockNumber: number;
+        logIndex: number;
+        transactionHash: string;
+        proposalId: number;
+        proposer: string;
+        target: string;
+        startTime: number;
+        endTime: number;
+        description: string;
+    }[];
+    votes: {
+        blockNumber: number;
+        logIndex: number;
+        transactionHash: string;
+        proposalId: number;
+        voter: string;
+        support: boolean;
+        votes: string;
+        from: string;
+        input: string;
+    }[];
+    delegates: {
+        blockNumber: number;
+        logIndex: number;
+        transactionHash: string;
+        account: string;
+        delegateTo: string;
+    }[];
+    undelegates: {
+        blockNumber: number;
+        logIndex: number;
+        transactionHash: string;
+        account: string;
+        delegateFrom: string;
+    }[];
+    _meta: {
+        block: {
+            number: number;
+        };
+        hasIndexingErrors: boolean;
+    };
+}
+export interface getGovernanceEventsParams {
+    graphApi: string;
+    subgraphName: string;
+    fromBlock: number;
+    fetchDataOptions?: fetchDataOptions;
+    onProgress?: BatchGraphOnProgress;
+}
+export declare function getGovernanceEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions, }: getGovernanceEventsParams): Promise<GraphGovernanceEvents>;
+export declare function getAllGovernanceEvents({ graphApi, subgraphName, fromBlock, fetchDataOptions, onProgress, }: getGovernanceEventsParams): Promise<BaseGraphEvents<AllGovernanceEvents>>;

@@ -3,10 +3,10 @@ import { BaseEvents, MinimalEvents } from './events';
 export declare function existsAsync(fileOrDir: string): Promise<boolean>;
 export declare function zipAsync(file: AsyncZippable): Promise<Uint8Array>;
 export declare function unzipAsync(data: Uint8Array): Promise<Unzipped>;
-export declare function saveEvents<T extends MinimalEvents>({ name, userDirectory, events, }: {
-    name: string;
+export declare function saveUserFile({ fileName, userDirectory, dataString, }: {
+    fileName: string;
     userDirectory: string;
-    events: T[];
+    dataString: string;
 }): Promise<void>;
 export declare function loadSavedEvents<T extends MinimalEvents>({ name, userDirectory, deployedBlock, }: {
     name: string;

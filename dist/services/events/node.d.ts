@@ -1,6 +1,6 @@
 import { BatchBlockOnProgress, BatchEventOnProgress } from '../batch';
-import { BaseDepositsService, BaseEncryptedNotesService, BaseGovernanceService, BaseRegistryService, BaseDepositsServiceConstructor, BaseEncryptedNotesServiceConstructor, BaseGovernanceServiceConstructor, BaseRegistryServiceConstructor, BaseGovernanceEventTypes } from './base';
-import type { BaseEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, RegistersEvents } from './types';
+import { BaseDepositsService, BaseEncryptedNotesService, BaseGovernanceService, BaseRegistryService, BaseDepositsServiceConstructor, BaseEncryptedNotesServiceConstructor, BaseGovernanceServiceConstructor, BaseRegistryServiceConstructor, BaseEchoServiceConstructor, BaseEchoService } from './base';
+import type { BaseEvents, DepositsEvents, WithdrawalsEvents, EncryptedNotesEvents, RegistersEvents, AllGovernanceEvents, EchoEvents } from './types';
 export type NodeDepositsServiceConstructor = BaseDepositsServiceConstructor & {
     cacheDirectory?: string;
     userDirectory?: string;
@@ -16,6 +16,20 @@ export declare class NodeDepositsService extends BaseDepositsService {
     getEventsFromDB(): Promise<BaseEvents<DepositsEvents | WithdrawalsEvents>>;
     getEventsFromCache(): Promise<BaseEvents<DepositsEvents | WithdrawalsEvents>>;
     saveEvents({ events, lastBlock }: BaseEvents<DepositsEvents | WithdrawalsEvents>): Promise<void>;
+}
+export type NodeEchoServiceConstructor = BaseEchoServiceConstructor & {
+    cacheDirectory?: string;
+    userDirectory?: string;
+};
+export declare class NodeEchoService extends BaseEchoService {
+    cacheDirectory?: string;
+    userDirectory?: string;
+    constructor({ netId, provider, graphApi, subgraphName, Echoer, deployedBlock, fetchDataOptions, cacheDirectory, userDirectory, }: NodeEchoServiceConstructor);
+    updateEventProgress({ type, fromBlock, toBlock, count }: Parameters<BatchEventOnProgress>[0]): void;
+    updateGraphProgress({ type, fromBlock, toBlock, count }: Parameters<BatchEventOnProgress>[0]): void;
+    getEventsFromDB(): Promise<BaseEvents<EchoEvents>>;
+    getEventsFromCache(): Promise<BaseEvents<EchoEvents>>;
+    saveEvents({ events, lastBlock }: BaseEvents<EchoEvents>): Promise<void>;
 }
 export type NodeEncryptedNotesServiceConstructor = BaseEncryptedNotesServiceConstructor & {
     cacheDirectory?: string;
@@ -42,9 +56,9 @@ export declare class NodeGovernanceService extends BaseGovernanceService {
     updateEventProgress({ type, fromBlock, toBlock, count }: Parameters<BatchEventOnProgress>[0]): void;
     updateGraphProgress({ type, fromBlock, toBlock, count }: Parameters<BatchEventOnProgress>[0]): void;
     updateTransactionProgress({ currentIndex, totalIndex }: Parameters<BatchBlockOnProgress>[0]): void;
-    getEventsFromDB(): Promise<BaseEvents<BaseGovernanceEventTypes>>;
-    getEventsFromCache(): Promise<BaseEvents<BaseGovernanceEventTypes>>;
-    saveEvents({ events, lastBlock }: BaseEvents<BaseGovernanceEventTypes>): Promise<void>;
+    getEventsFromDB(): Promise<BaseEvents<AllGovernanceEvents>>;
+    getEventsFromCache(): Promise<BaseEvents<AllGovernanceEvents>>;
+    saveEvents({ events, lastBlock }: BaseEvents<AllGovernanceEvents>): Promise<void>;
 }
 export type NodeRegistryServiceConstructor = BaseRegistryServiceConstructor & {
     cacheDirectory?: string;
